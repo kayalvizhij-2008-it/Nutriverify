@@ -1,0 +1,12 @@
+com\nutriverify\engine\AuthenticityEngineTest.class
+com\nutriverify\engine\NutritionConsistencyCheckerTest.class
+com\nutriverify\engine\IngredientAnalyzerTest.class
+com\nutriverify\security\JwtTokenProviderTest.class
+com\nutriverify\engine\ComparisonEngineTest.class
+com\nutriverify\service\NutriSaathiServiceTest.class
+com\nutriverify\engine\AllergenDetectorTest.class
+com\nutriverify\controller\AuthControllerTest.class
+com\nutriverify\engine\HealthScoreEngineTest.class
+com\nutriverify\engine\ClaimValidatorTest.class
+com\nutriverify\service\AuthServiceTest.class
+com\nutriverify\engine\RecommendationEngineTest.class

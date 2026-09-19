@@ -1,0 +1,207 @@
+@import "tailwindcss";
+
+@theme {
+  /* === SURFACE / BACKGROUND === */
+  --color-nv-bg: #0e0e0e;
+  --color-nv-surface: #131313;
+  --color-nv-surface-dim: #131313;
+  --color-nv-surface-container-lowest: #0e0e0e;
+  --color-nv-surface-container-low: #1c1b1b;
+  --color-nv-surface-container: #201f1f;
+  --color-nv-surface-container-high: #2a2a2a;
+  --color-nv-surface-container-highest: #353534;
+  --color-nv-surface-variant: #353534;
+  --color-nv-surface-bright: #3a3939;
+  --color-nv-inverse-surface: #e5e2e1;
+
+  /* === TEXT === */
+  --color-nv-text: #e5e2e1;
+  --color-nv-text-muted: #d0c5af;
+  --color-nv-text-dim: #99907c;
+
+  /* === PRIMARY (GOLD) === */
+  --color-nv-primary: #f2ca50;
+  --color-nv-primary-dim: #e9c349;
+  --color-nv-primary-container: #d4af37;
+  --color-nv-on-primary: #3c2f00;
+  --color-nv-on-primary-container: #554300;
+  --color-nv-primary-fixed: #ffe088;
+  --color-nv-primary-fixed-dim: #e9c349;
+
+  /* === SECONDARY (SILVER) === */
+  --color-nv-secondary: #c4c7ca;
+  --color-nv-secondary-container: #44474a;
+  --color-nv-on-secondary: #2e3133;
+  --color-nv-on-secondary-container: #b3b5b8;
+
+  /* === TERTIARY (GREEN) === */
+  --color-nv-tertiary: #5de88e;
+  --color-nv-tertiary-container: #3bcb75;
+  --color-nv-on-tertiary: #00391a;
+  --color-nv-on-tertiary-container: #005027;
+
+  /* === ERROR === */
+  --color-nv-error: #ffb4ab;
+  --color-nv-error-container: #93000a;
+  --color-nv-on-error: #690005;
+  --color-nv-on-error-container: #ffdad6;
+
+  /* === OUTLINE === */
+  --color-nv-outline: #99907c;
+  --color-nv-outline-variant: #4d4635;
+
+  /* === FONT FAMILIES === */
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Hanken Grotesk', 'Noto Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: 'Hanken Grotesk', 'Noto Sans', system-ui, sans-serif;
+}
+
+/* === BASE RESET (must be inside @layer for Tailwind v4 compatibility) === */
+@layer base {
+  html { scroll-behavior: smooth; }
+  html, body { overscroll-behavior: none; }
+  body {
+    font-family: var(--font-body);
+    background-color: var(--color-nv-surface);
+    color: var(--color-nv-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.6;
+  }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--color-nv-surface); }
+  ::-webkit-scrollbar-thumb { background: var(--color-nv-outline-variant); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-nv-outline); }
+  ::selection {
+    background-color: rgba(242, 202, 80, 0.25);
+    color: var(--color-nv-text);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-nv-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer base {
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* === GOLD PARTICLE FIELD === */
+@keyframes float-particle {
+  0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  50% { transform: translateY(-40vh) translateX(20px); }
+}
+
+@keyframes float-particle-alt {
+  0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
+  15% { opacity: 0.7; }
+  85% { opacity: 0.7; }
+  50% { transform: translateY(-35vh) translateX(-15px); }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-scale {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes subtle-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes score-ring-fill {
+  from { stroke-dashoffset: 314; }
+  to { stroke-dashoffset: var(--target-offset, 0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes scan-line {
+  0% { top: 0%; }
+  100% { top: 100%; }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.9); opacity: 0.5; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+
+@layer utilities {
+  .animate-fade-in-up {
+    animation: fade-in-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  .animate-fade-in-scale {
+    animation: fade-in-scale 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  .animate-subtle-float {
+    animation: subtle-float 6s ease-in-out infinite;
+  }
+  .animate-gradient-shift {
+    background-size: 200% 200%;
+    animation: gradient-shift 8s ease infinite;
+  }
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent, rgba(242, 202, 80, 0.05), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 3s linear infinite;
+  }
+  .score-ring-animated {
+    animation: score-ring-fill 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+}
+
+@layer utilities {
+  .gold-glow-sm {
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.08);
+  }
+  .gold-glow-md {
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.12);
+  }
+  .gold-glow-lg {
+    box-shadow: 0 0 60px rgba(212, 175, 55, 0.15);
+  }
+  .gold-border-glow {
+    border: 1px solid rgba(242, 202, 80, 0.15);
+  }
+  .glass-card {
+    background: rgba(28, 27, 27, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(77, 70, 53, 0.3);
+  }
+}
+
+@layer base {
+  .material-symbols-outlined {
+    font-variation-settings:
+      'FILL' 0,
+      'wght' 400,
+      'GRAD' 0,
+      'opsz' 24;
+  }
+}

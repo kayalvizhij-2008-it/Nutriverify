@@ -1,0 +1,12 @@
+C:\Users\dhurg\Desktop\NutriVerify\src\test\java\com\nutriverify\controller\AuthControllerTest.java
+C:\Users\dhurg\Desktop\NutriVerify\src\test\java\com\nutriverify\engine\AllergenDetectorTest.java
+C:\Users\dhurg\Desktop\NutriVerify\src\test\java\com\nutriverify\engine\AuthenticityEngineTest.java
+C:\Users\dhurg\Desktop\NutriVerify\src\test\java\com\nutriverify\engine\ClaimValidatorTest.java
+C:\Users\dhurg\Desktop\NutriVerify\src\test\java\com\nutriverify\engine\ComparisonEngineTest.java
+C:\Users\dhurg\Desktop\NutriVerify\src\test\java\com\nutriverify\engine\HealthScoreEngineTest.java
+C:\Users\dhurg\Desktop\NutriVerify\src\test\java\com\nutriverify\engine\IngredientAnalyzerTest.java
+C:\Users\dhurg\Desktop\NutriVerify\src\test\java\com\nutriverify\engine\NutritionConsistencyCheckerTest.java
+C:\Users\dhurg\Desktop\NutriVerify\src\test\java\com\nutriverify\engine\RecommendationEngineTest.java
+C:\Users\dhurg\Desktop\NutriVerify\src\test\java\com\nutriverify\security\JwtTokenProviderTest.java
+C:\Users\dhurg\Desktop\NutriVerify\src\test\java\com\nutriverify\service\AuthServiceTest.java
+C:\Users\dhurg\Desktop\NutriVerify\src\test\java\com\nutriverify\service\NutriSaathiServiceTest.java
