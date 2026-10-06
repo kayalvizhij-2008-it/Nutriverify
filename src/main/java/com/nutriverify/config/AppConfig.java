@@ -19,6 +19,8 @@ public final class AppConfig {
     public static final double HIGH_PROTEIN_THRESHOLD = 10.0;
     public static final double SUGAR_CARBS_RATIO_LIMIT = 0.50;
     public static final double SODIUM_PER_SERVING_LIMIT = 400.0;
+    public static final double HIGH_FIBER_THRESHOLD = 5.0;
+    public static final double LOW_SODIUM_THRESHOLD = 140.0; // FDA "low sodium": <= 140mg per serving
 
     public static final int TRUSTED_MIN_SCORE = 85;
     public static final int LOW_RISK_MIN_SCORE = 65;

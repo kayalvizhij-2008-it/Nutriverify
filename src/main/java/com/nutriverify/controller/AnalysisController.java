@@ -35,13 +35,16 @@ public class AnalysisController {
     private final WebAnalysisService analysisService;
     private final AnalysisHistoryRepository historyRepository;
     private final UserRepository userRepository;
+    private final com.nutriverify.service.ocr.OCRProviderRouter ocrRouter;
 
     public AnalysisController(WebAnalysisService analysisService,
                               AnalysisHistoryRepository historyRepository,
-                              UserRepository userRepository) {
+                              UserRepository userRepository,
+                              com.nutriverify.service.ocr.OCRProviderRouter ocrRouter) {
         this.analysisService = analysisService;
         this.historyRepository = historyRepository;
         this.userRepository = userRepository;
+        this.ocrRouter = ocrRouter;
     }
 
     @PostMapping("/analyze")
@@ -49,8 +52,8 @@ public class AnalysisController {
             @Valid @RequestBody AnalyzeRequest request,
             Authentication authentication) {
 
-        String username = authentication.getName();
-        UserEntity user = userRepository.findByUsername(username).orElse(null);
+        String username = authentication != null ? authentication.getName() : null;
+        UserEntity user = username != null ? userRepository.findByUsername(username).orElse(null) : null;
 
         // Run analysis
         AnalysisResponse response = analysisService.analyze(request, user);
@@ -137,14 +140,29 @@ public class AnalysisController {
             }
         }
 
+        byte[] bytes = new byte[0];
+        try {
+            bytes = file.getBytes();
+        } catch (java.io.IOException ignored) {}
+
+        com.nutriverify.service.ocr.OCRResult ocrResult = ocrRouter.processImage(
+                bytes,
+                sanitizeFilename(file.getOriginalFilename())
+        );
+
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("message", "File received: " + sanitizeFilename(file.getOriginalFilename()));
         response.put("status", "received");
         response.put("fileName", sanitizeFilename(file.getOriginalFilename()));
         response.put("contentType", contentType);
         response.put("size", file.getSize());
-        response.put("ocrStatus", "manual-entry-required");
-        response.put("ocrMessage", "OCR provider not configured. Please enter nutrition information manually.");
+        response.put("ocrConfigured", ocrResult.isOcrConfigured());
+        response.put("ocrAvailable", ocrResult.isOcrAvailable());
+        response.put("provider", ocrResult.getProvider());
+        response.put("confidence", ocrResult.getConfidence());
+        response.put("ocrStatus", ocrResult.getStatus());
+        response.put("ocrMessage", ocrResult.getNoticeMessage());
+        response.put("extractedFields", ocrResult.getExtractedFields());
 
         return ResponseEntity.ok(response);
     }

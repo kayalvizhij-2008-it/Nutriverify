@@ -4,6 +4,7 @@ com\nutriverify\engine\IngredientAnalyzerTest.class
 com\nutriverify\security\JwtTokenProviderTest.class
 com\nutriverify\engine\ComparisonEngineTest.class
 com\nutriverify\service\NutriSaathiServiceTest.class
+com\nutriverify\service\NutriVerifyAITest.class
 com\nutriverify\engine\AllergenDetectorTest.class
 com\nutriverify\controller\AuthControllerTest.class
 com\nutriverify\engine\HealthScoreEngineTest.class

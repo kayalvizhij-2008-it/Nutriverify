@@ -1,10 +1,14 @@
 package com.nutriverify.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nutriverify.entity.AnalysisHistoryEntity;
+import com.nutriverify.service.ai.AIProviderRouter;
+import com.nutriverify.service.ai.AIResult;
+import com.nutriverify.service.ai.DeterministicNutriSaathiProvider;
+import com.nutriverify.service.ai.ExternalLLMProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -12,17 +16,28 @@ import static org.junit.jupiter.api.Assertions.*;
 public class NutriSaathiServiceTest {
 
     private NutriSaathiService service;
+    private AIProviderRouter router;
+    private DeterministicNutriSaathiProvider deterministicProvider;
+    private ExternalLLMProvider externalLLMProvider;
 
     @BeforeEach
     public void setUp() {
-        service = new NutriSaathiService();
+        ObjectMapper objectMapper = new ObjectMapper();
+        deterministicProvider = new DeterministicNutriSaathiProvider();
+        // Unconfigured key -> falls back to deterministic engine
+        externalLLMProvider = new ExternalLLMProvider("", "gpt-4o-mini", "https://api.openai.com/v1", 1000, objectMapper);
+        router = new AIProviderRouter(externalLLMProvider, deterministicProvider);
+        service = new NutriSaathiService(router);
     }
 
     @Test
     public void testGreetingResponse() {
-        String response = service.processMessage("hi", null, "en");
-        assertNotNull(response);
-        assertFalse(response.isEmpty());
+        AIResult result = service.processMessageDetails("hi", null, "en");
+        assertNotNull(result);
+        assertNotNull(result.getContent());
+        assertFalse(result.getContent().isEmpty());
+        assertEquals("DETERMINISTIC_FALLBACK", result.getProviderType());
+        assertEquals("Verified fallback", result.getStatusLabel());
     }
 
     @Test
@@ -93,7 +108,6 @@ public class NutriSaathiServiceTest {
         ctx.setProtein(3);
         ctx.setFiber(1);
 
-        // Avoid words containing "hi" substring (like "why" has no "hi", good)
         String response = service.processMessage("why did my product get a low score?", ctx, "en");
         assertNotNull(response);
         assertTrue(response.contains("45"), "Should mention the actual score");
@@ -177,9 +191,21 @@ public class NutriSaathiServiceTest {
 
     @Test
     public void testLanguageParameterAccepted() {
-        // Should not throw even with non-English language code
         String response = service.processMessage("hello", null, "ta");
         assertNotNull(response);
         assertFalse(response.isEmpty());
+    }
+
+    @Test
+    public void testExternalAIAvailabilityCheck() {
+        assertFalse(externalLLMProvider.isAvailable());
+        assertFalse(service.isExternalAIAvailable());
+    }
+
+    @Test
+    public void testExternalAIConfiguredAvailability() {
+        ExternalLLMProvider configuredProvider = new ExternalLLMProvider(
+                "sk-dummy-test-key", "gpt-4o-mini", "https://api.openai.com/v1", 1000, new ObjectMapper());
+        assertTrue(configuredProvider.isAvailable());
     }
 }

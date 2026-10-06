@@ -5,8 +5,10 @@ import com.nutriverify.engine.ClaimValidator;
 import com.nutriverify.engine.ComparisonEngine;
 import com.nutriverify.engine.IngredientAnalyzer;
 import com.nutriverify.engine.NutritionConsistencyChecker;
+import com.nutriverify.engine.rules.HighFiberRule;
 import com.nutriverify.engine.rules.HighProteinRule;
 import com.nutriverify.engine.rules.LowFatRule;
+import com.nutriverify.engine.rules.LowSodiumRule;
 import com.nutriverify.engine.rules.NaturalRule;
 import com.nutriverify.engine.rules.NoAddedSugarRule;
 import com.nutriverify.engine.rules.NonGmoRule;
@@ -65,7 +67,9 @@ public class NutriVerifyApp {
                     new HighProteinRule(),
                     new NaturalRule(),
                     new OrganicRule(),
-                    new NonGmoRule())),
+                    new NonGmoRule(),
+                    new HighFiberRule(),
+                    new LowSodiumRule())),
             new NutritionConsistencyChecker(),
             new IngredientAnalyzer());
     private final AnalysisService analysisService = new AnalysisService(engine);
@@ -294,12 +298,15 @@ public class NutriVerifyApp {
 
     private ClaimType mapClaimType(String text) {
         String normalized = text.toLowerCase(Locale.ROOT);
-        if (normalized.contains("sugar")) return ClaimType.NO_ADDED_SUGAR;
+        if (normalized.contains("gmo")) return ClaimType.NON_GMO;
+        if (normalized.contains("organic")) return ClaimType.ORGANIC;
+        if (normalized.contains("natural")) return ClaimType.NATURAL;
+        if (normalized.contains("sugar") || normalized.contains("sweeten")) return ClaimType.NO_ADDED_SUGAR;
         if (normalized.contains("fat")) return ClaimType.LOW_FAT;
         if (normalized.contains("protein")) return ClaimType.HIGH_PROTEIN;
-        if (normalized.contains("natural")) return ClaimType.NATURAL;
-        if (normalized.contains("organic")) return ClaimType.ORGANIC;
-        return ClaimType.NON_GMO;
+        if (normalized.contains("fiber") || normalized.contains("fibre")) return ClaimType.HIGH_FIBER;
+        if (normalized.contains("sodium") || normalized.contains("salt")) return ClaimType.LOW_SODIUM;
+        return ClaimType.CUSTOM;
     }
 
     private Ingredient mapIngredient(String name) {

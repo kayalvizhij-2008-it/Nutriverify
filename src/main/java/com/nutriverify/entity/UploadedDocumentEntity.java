@@ -31,10 +31,10 @@ public class UploadedDocumentEntity {
     @Column(length = 50)
     private String status; // RECEIVED, PROCESSING, COMPLETED, FAILED
 
-    @Column(columnDefinition = "CLOB")
+    @Column(columnDefinition = "TEXT")
     private String extractedText;
 
-    @Column(columnDefinition = "CLOB")
+    @Column(columnDefinition = "TEXT")
     private String extractedData; // JSON - the OCR/vision extracted structured data
 
     private double imageQualityScore;

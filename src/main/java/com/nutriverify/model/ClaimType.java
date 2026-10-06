@@ -9,5 +9,8 @@ public enum ClaimType {
     HIGH_PROTEIN,
     NATURAL,
     ORGANIC,
-    NON_GMO
+    NON_GMO,
+    HIGH_FIBER,
+    LOW_SODIUM,
+    CUSTOM
 }

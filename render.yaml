@@ -1,0 +1,65 @@
+services:
+  # 1. PostgreSQL Database
+  - type: postgres
+    name: nutriverify-db
+    plan: free
+    ipAllowList: [] # internal access only
+    databaseName: nutriverify
+    user: nutriverify
+
+  # 2. Spring Boot Web Service
+  - type: web
+    name: nutriverify-backend
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nutriverify-db
+          property: connectionString
+      - key: DATABASE_USERNAME
+        fromDatabase:
+          name: nutriverify-db
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: nutriverify-db
+          property: password
+      - key: JWT_SECRET
+        generateValue: true
+      - key: NUTRIVERIFY_CORS_ALLOWED_ORIGINS
+        value: "*"
+      - key: AI_ENABLED
+        value: "true"
+      - key: AI_PROVIDER
+        value: openai
+      - key: AI_API_KEY
+        sync: false
+      - key: OCR_API_KEY
+        sync: false
+      - key: SPEECH_API_KEY
+        sync: false
+
+  # 3. React + Vite Frontend Static Site
+  - type: web
+    name: nutriverify-frontend
+    env: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: nutriverify-backend
+          property: host
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false

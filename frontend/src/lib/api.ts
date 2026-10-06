@@ -2,7 +2,14 @@
  * API client for NutriVerify backend.
  */
 
-const API_BASE = '/api/v1';
+function resolveApiBase(): string {
+  const envUrl = ((import.meta as any).env?.VITE_API_BASE_URL as string | undefined)?.trim();
+  if (!envUrl) return '/api/v1';
+  const clean = envUrl.replace(/\/+$/, '');
+  return clean.endsWith('/api/v1') ? clean : `${clean}/api/v1`;
+}
+
+export const API_BASE = resolveApiBase();
 
 function getToken(): string | null {
   return localStorage.getItem('nv_token');
@@ -91,6 +98,19 @@ export interface AnalysisResponse {
   healthScore: number;
   riskLevel: string;
   claimResults: { claimText: string; claimType: string; verdict: string; reason: string }[];
+  ingredients?: { name: string; category?: string; note?: string }[];
+  ingredientsText?: string;
+  nutritionFacts?: {
+    energyKcal?: number;
+    proteinG?: number;
+    carbohydratesG?: number;
+    totalSugarsG?: number;
+    dietaryFiberG?: number;
+    totalFatG?: number;
+    sodiumMg?: number;
+  };
+  imageUrl?: string;
+  category?: string;
   ingredientRisks: { category: string; count: number }[];
   nutritionFindings: { message: string; problematic: boolean }[];
   recommendations: string[];
@@ -138,10 +158,21 @@ export const compareApi = {
     }),
 };
 
-// Chat (NutriSaathi)
+export interface ChatResponseDto {
+  response: string;
+  language: string;
+  suggestedFollowUps: string[];
+  timestamp: string;
+  providerType?: string;
+  statusLabel?: string;
+  contextProductName?: string;
+  fallback?: boolean;
+}
+
+// Chat (NutriVerify AI)
 export const chatApi = {
   send: (message: string, analysisContextId?: number, language?: string) =>
-    request<{ response: string; language: string; suggestedFollowUps: string[]; timestamp: string }>('/chat', {
+    request<ChatResponseDto>('/chat', {
       method: 'POST',
       body: JSON.stringify({ message, analysisContextId, language }),
     }),
@@ -166,7 +197,21 @@ export const profileApi = {
   updateGoals: (data: { dietaryGoals: string[] }) => request<{ dietaryGoals: string[] }>('/goals', { method: 'PUT', body: JSON.stringify(data) }),
 };
 
-// Health check
+// Health & AI status check
+export interface AiStatusDto {
+  aiConfigured: boolean;
+  aiAvailable: boolean;
+  provider: string;
+  mode: string;
+  statusLabel: string;
+  ocrConfigured: boolean;
+  speechConfigured: boolean;
+}
+
 export const healthApi = {
   check: () => request<{ status: string; application: string; version: string }>('/health'),
+};
+
+export const aiApi = {
+  getStatus: () => request<AiStatusDto>('/ai/status'),
 };

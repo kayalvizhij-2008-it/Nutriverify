@@ -24,6 +24,7 @@ public class ProfileController {
 
     @GetMapping("/profile")
     public ResponseEntity<Map<String, Object>> getProfile(Authentication authentication) {
+        if (authentication == null) return ResponseEntity.status(401).build();
         UserEntity user = userRepository.findByUsername(authentication.getName()).orElse(null);
         if (user == null) return ResponseEntity.notFound().build();
 
@@ -43,6 +44,7 @@ public class ProfileController {
     public ResponseEntity<Map<String, Object>> updateProfile(
             @RequestBody Map<String, Object> updates,
             Authentication authentication) {
+        if (authentication == null) return ResponseEntity.status(401).build();
 
         UserEntity user = userRepository.findByUsername(authentication.getName()).orElse(null);
         if (user == null) return ResponseEntity.notFound().build();
@@ -75,6 +77,7 @@ public class ProfileController {
 
     @GetMapping("/goals")
     public ResponseEntity<Map<String, Object>> getGoals(Authentication authentication) {
+        if (authentication == null) return ResponseEntity.status(401).build();
         UserEntity user = userRepository.findByUsername(authentication.getName()).orElse(null);
         if (user == null) return ResponseEntity.notFound().build();
         Map<String, Object> goals = new LinkedHashMap<>();
@@ -86,6 +89,7 @@ public class ProfileController {
     public ResponseEntity<Map<String, Object>> updateGoals(
             @RequestBody Map<String, Object> updates,
             Authentication authentication) {
+        if (authentication == null) return ResponseEntity.status(401).build();
         UserEntity user = userRepository.findByUsername(authentication.getName()).orElse(null);
         if (user == null) return ResponseEntity.notFound().build();
         if (updates.containsKey("dietaryGoals")) {

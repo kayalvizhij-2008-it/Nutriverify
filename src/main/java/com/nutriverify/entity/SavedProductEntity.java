@@ -38,11 +38,17 @@ public class SavedProductEntity {
     private int healthScore;
     private String riskLevel;
 
+    @Column(columnDefinition = "TEXT")
     private String ingredients; // JSON
+    @Column(columnDefinition = "TEXT")
     private String claims; // JSON
+    @Column(columnDefinition = "TEXT")
     private String claimResults; // JSON
+    @Column(columnDefinition = "TEXT")
     private String ingredientRisks; // JSON
+    @Column(columnDefinition = "TEXT")
     private String nutritionFindings; // JSON
+    @Column(columnDefinition = "TEXT")
     private String recommendations; // JSON
 
     @Column(nullable = false)

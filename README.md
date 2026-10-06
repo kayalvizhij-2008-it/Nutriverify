@@ -56,16 +56,17 @@
 - Side-by-side comparison across all nutrition metrics
 - Recommended product with detailed reasoning
 
-### 🤖 NutriSaathi (AI Assistant)
-- Conversational nutrition assistant with 40+ response patterns
-- General nutrition questions + product-specific context
-- Conversation history, copy, regenerate, helpful/not-helpful feedback
+### 🤖 NutriVerify AI Assistant
+- Conversational food intelligence assistant grounded in active product specifications
+- General nutrition questions + product-specific context routing
+- Conversation history, copy, clear, and instant query prompts
+- Hybrid AI Router: External LLM provider when configured, verified local domain engine fallback
 - Selective context retrieval (only loads relevant product data)
 - Multilingual responses (English, Hindi, Tamil)
 
-### 🎙️ Voice Saathi
+### 🎙️ NutriVerify Voice Assistant
 - Accessibility-first voice assistant using Web Speech API
-- Browser-native STT/TTS — no API keys required for Chrome/Edge/Safari
+- Browser-native STT/TTS — no external API keys required for Chrome/Edge/Safari
 - English, Hindi, Tamil language support
 - Real-time interim transcript display
 

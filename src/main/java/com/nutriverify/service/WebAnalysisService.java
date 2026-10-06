@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -36,7 +37,9 @@ public class WebAnalysisService {
                 new HighProteinRule(),
                 new NaturalRule(),
                 new OrganicRule(),
-                new NonGmoRule()));
+                new NonGmoRule(),
+                new HighFiberRule(),
+                new LowSodiumRule()));
         this.authenticityEngine = new AuthenticityEngine(
                 claimValidator,
                 new NutritionConsistencyChecker(),
@@ -292,26 +295,14 @@ public class WebAnalysisService {
         List<Ingredient> ingredients = new ArrayList<>();
         if (request.getIngredients() != null) {
             for (IngredientDto dto : request.getIngredients()) {
-                IngredientCategory cat;
-                try {
-                    cat = IngredientCategory.valueOf(dto.getCategory().toUpperCase());
-                } catch (Exception e) {
-                    cat = IngredientCategory.UNKNOWN;
-                }
-                ingredients.add(new Ingredient(dto.getName(), cat, dto.getNote()));
+                ingredients.add(new Ingredient(dto.getName(), resolveIngredientCategory(dto), dto.getNote()));
             }
         }
 
         List<Claim> claims = new ArrayList<>();
         if (request.getClaims() != null) {
             for (ClaimDto dto : request.getClaims()) {
-                ClaimType type;
-                try {
-                    type = ClaimType.valueOf(dto.getType().toUpperCase());
-                } catch (Exception e) {
-                    type = ClaimType.NON_GMO;
-                }
-                claims.add(new Claim(type, dto.getDisplayText()));
+                claims.add(new Claim(resolveClaimType(dto), dto.getDisplayText()));
             }
         }
 
@@ -322,6 +313,101 @@ public class WebAnalysisService {
                 ingredients, claims,
                 request.getCalories(), request.getFat(), request.getSugar(),
                 request.getSodium(), request.getProtein(), request.getCarbs(), request.getFiber());
+    }
+
+    /**
+     * Resolve a claim to a supported type. Uses an explicit enum value when the
+     * client provides one, otherwise infers the type from keywords in the claim
+     * text (e.g. "No Added Sugar" -> NO_ADDED_SUGAR). Unrecognized claims map to
+     * CUSTOM, which the ClaimValidator honestly reports as SUSPICIOUS.
+     */
+    private ClaimType resolveClaimType(ClaimDto dto) {
+        String rawType = dto.getType() == null ? "" : dto.getType().trim();
+        if (!rawType.isEmpty()) {
+            try {
+                ClaimType explicit = ClaimType.valueOf(rawType.toUpperCase(Locale.ROOT));
+                if (explicit != ClaimType.CUSTOM) {
+                    return explicit;
+                }
+            } catch (IllegalArgumentException ignored) {
+                // Not a known enum name - fall through to text-based inference.
+            }
+        }
+
+        String text = ((dto.getDisplayText() == null ? "" : dto.getDisplayText()) + " " + rawType)
+                .toLowerCase(Locale.ROOT);
+        if (text.contains("gmo")) return ClaimType.NON_GMO;
+        if (text.contains("organic")) return ClaimType.ORGANIC;
+        if (text.contains("natural")) return ClaimType.NATURAL;
+        if (text.contains("sugar") || text.contains("sweeten")) return ClaimType.NO_ADDED_SUGAR;
+        if (text.contains("fat")) return ClaimType.LOW_FAT;
+        if (text.contains("protein")) return ClaimType.HIGH_PROTEIN;
+        if (text.contains("fiber") || text.contains("fibre")) return ClaimType.HIGH_FIBER;
+        if (text.contains("sodium") || text.contains("salt")) return ClaimType.LOW_SODIUM;
+        return ClaimType.CUSTOM;
+    }
+
+    private static final Pattern ALLERGEN_PATTERN = Pattern.compile(
+            "\\b(milk|wheat|soy|soya|gluten|peanut|almond|cashew|walnut|pecan|pistachio|hazelnut|macadamia|tree ?nut|egg|sesame|shellfish|shrimp|crab|lobster|mustard|celery|lupin)\\b");
+
+    /**
+     * Resolve an ingredient category. Honors valid explicit categories, then the
+     * parenthetical note (e.g. "Almonds (natural)"), then keyword inference from
+     * the note and ingredient name. Unclassifiable whole foods default to NATURAL
+     * so they do not surface as ingredient risks.
+     */
+    private IngredientCategory resolveIngredientCategory(IngredientDto dto) {
+        String rawCategory = dto.getCategory() == null ? "" : dto.getCategory().trim();
+        if (!rawCategory.isEmpty()) {
+            try {
+                IngredientCategory explicit = IngredientCategory.valueOf(normalizeCategoryToken(rawCategory));
+                if (explicit != IngredientCategory.UNKNOWN) {
+                    return explicit;
+                }
+            } catch (IllegalArgumentException ignored) {
+                // Invalid category (e.g. legacy values) - infer below.
+            }
+        }
+
+        String note = dto.getNote() == null ? "" : dto.getNote().trim();
+        if (!note.isEmpty()) {
+            try {
+                IngredientCategory fromNote = IngredientCategory.valueOf(normalizeCategoryToken(note));
+                if (fromNote != IngredientCategory.UNKNOWN) {
+                    return fromNote;
+                }
+            } catch (IllegalArgumentException ignored) {
+                // Not a category name - infer from keywords below.
+            }
+        }
+
+        String haystack = (note + " " + (dto.getName() == null ? "" : dto.getName())).toLowerCase(Locale.ROOT);
+        if (containsAny(haystack, "artificial", "flavor", "flavour", "colour", "color", "dye", "tartrazine", "red 40", "yellow 5", "yellow 6")) {
+            return IngredientCategory.ARTIFICIAL;
+        }
+        if (containsAny(haystack, "sweeten", "sugar", "syrup", "fructose", "sucrose", "sucralose", "aspartame", "stevia", "saccharin", "acesulfame", "xylitol", "maltitol")) {
+            return IngredientCategory.SWEETENER;
+        }
+        if (containsAny(haystack, "preserv", "benzoate", "sorbate", "sorbic", "nitrite", "nitrate", "sulfite", "sulphite", "propionate", "erythorbate")) {
+            return IngredientCategory.PRESERVATIVE;
+        }
+        if (haystack.contains("gmo")) return IngredientCategory.GMO_DERIVED;
+        if (ALLERGEN_PATTERN.matcher(haystack).find()) return IngredientCategory.ALLERGEN;
+        if (containsAny(haystack, "msg", "monosodium glutamate", "palm oil", "pesticide")) return IngredientCategory.CONTROVERSIAL;
+        return IngredientCategory.NATURAL;
+    }
+
+    private String normalizeCategoryToken(String value) {
+        return value.toUpperCase(Locale.ROOT)
+                .replaceAll("[^A-Z0-9]+", "_")
+                .replaceAll("^_+|_+$", "");
+    }
+
+    private boolean containsAny(String haystack, String... keywords) {
+        for (String keyword : keywords) {
+            if (haystack.contains(keyword)) return true;
+        }
+        return false;
     }
 
     private AnalysisResponse mapToResponse(AnalysisResult result) {

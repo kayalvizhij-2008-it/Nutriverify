@@ -39,13 +39,19 @@ public class AnalysisHistoryEntity {
     private int authenticityScore;
     private int healthScore;
     private String riskLevel;
+    @Column(columnDefinition = "TEXT")
     private String claimResults; // JSON string
+    @Column(columnDefinition = "TEXT")
     private String ingredientRisks; // JSON string
+    @Column(columnDefinition = "TEXT")
     private String nutritionFindings; // JSON string
+    @Column(columnDefinition = "TEXT")
     private String recommendations; // JSON string
 
     // Ingredients and claims as JSON
+    @Column(columnDefinition = "TEXT")
     private String ingredients; // JSON string
+    @Column(columnDefinition = "TEXT")
     private String claims; // JSON string
 
     @Column(nullable = false)
@@ -55,6 +61,7 @@ public class AnalysisHistoryEntity {
     private Long documentId;
 
     // Confidence scores (JSON)
+    @Column(columnDefinition = "TEXT")
     private String confidenceScores;
 
     public AnalysisHistoryEntity() {}

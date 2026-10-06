@@ -1,611 +1,1314 @@
-import { Link } from 'react-router-dom';
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import AmbientBackground from '../components/AmbientBackground';
+import CommandPalette from '../components/CommandPalette';
+import IngredientOrbit from '../components/IngredientOrbit';
+import FoodIntelligenceMap from '../components/FoodIntelligenceMap';
+import AnalysisFlowchart from '../components/AnalysisFlowchart';
+import { getDemoAnalysis, DEMO_PRODUCTS } from '../lib/demo';
 
-/* ── Gold Particle Canvas ──────────────────────────────── */
-function GoldParticles() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+export default function Landing() {
+  const navigate = useNavigate();
+  const [activeLens, setActiveLens] = useState<'claims' | 'nutrition' | 'additives'>('claims');
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoStageIdx, setDemoStageIdx] = useState(0);
+  const [demoProductName, setDemoProductName] = useState('');
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+  const DEMO_STAGES = [
+    '01 · Reading label & packaging specimen...',
+    '02 · Extracting nutritional metrics & declarations...',
+    '03 · Checking chemical & botanical ingredients...',
+    '04 · Validating front-of-pack claims under FDA / EFSA / FSSAI...',
+    '05 · Checking allergen risk matrix (US Big 9 & EU 14)...',
+    '06 · Calculating NutriVerify health & authenticity scores...',
+    '07 · Preparing verification dossier & statutory audit...'
+  ];
 
-    let animId: number;
-    const particles: { x: number; y: number; vx: number; vy: number; r: number; a: number }[] = [];
+  const handleRunDemo = async (index = 0) => {
+    const demoData = getDemoAnalysis(index);
+    setDemoProductName(demoData.productName);
+    setDemoLoading(true);
+    setDemoStageIdx(0);
 
-    const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
-    resize();
-    window.addEventListener('resize', resize);
-
-    for (let i = 0; i < 40; i++) {
-      particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.15,
-        vy: -Math.random() * 0.3 - 0.05,
-        r: Math.random() * 1.5 + 0.5,
-        a: Math.random() * 0.4 + 0.1,
-      });
+    for (let i = 0; i < DEMO_STAGES.length; i++) {
+      setDemoStageIdx(i);
+      await new Promise(r => setTimeout(r, 350));
     }
 
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      particles.forEach(p => {
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.y < -10) { p.y = canvas.height + 10; p.x = Math.random() * canvas.width; }
-        if (p.x < -10) p.x = canvas.width + 10;
-        if (p.x > canvas.width + 10) p.x = -10;
+    sessionStorage.setItem('nv_last_result', JSON.stringify(demoData));
+    await new Promise(r => setTimeout(r, 200));
+    setDemoLoading(false);
+    navigate('/results');
+  };
 
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(212, 175, 55, ${p.a})`;
-        ctx.fill();
-      });
-
-      // Draw faint connection lines between nearby particles
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 120) {
-            ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(212, 175, 55, ${0.04 * (1 - dist / 120)})`;
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-          }
-        }
-      }
-      animId = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => { cancelAnimationFrame(animId); window.removeEventListener('resize', resize); };
-  }, []);
-
-  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />;
-}
-
-/* ── Score Ring ────────────────────────────────────────── */
-function ScoreRing({ score, color, label }: { score: number; color: string; label: string }) {
-  const circumference = 2 * Math.PI * 15.9155;
-  const offset = circumference - (score / 100) * circumference;
-  return (
-    <div className="flex flex-col items-center">
-      <div className="relative w-20 h-20 mb-2">
-        <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-          <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-nv-surface-variant" />
-          <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" style={{ strokeDasharray: circumference, strokeDashoffset: offset }} className="transition-all duration-1000" />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="font-[family-name:var(--font-display)] text-[24px] font-bold text-nv-text leading-none">{score}</span>
-          <span className="text-[9px] font-[family-name:var(--font-mono)] text-nv-text-dim">/ 100</span>
-        </div>
-      </div>
-      <span className="text-[10px] font-[family-name:var(--font-mono)] uppercase tracking-[0.12em] font-medium" style={{ color }}>{label}</span>
-    </div>
-  );
-}
-
-/* ── Main Landing ──────────────────────────────────────── */
-export default function Landing() {
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+  const scrollToWorkbench = () => {
+    const el = document.getElementById('test-bench-section');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-nv-surface">
-      {/* ───────── NAVBAR ───────── */}
-      <header className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-nv-surface-container-lowest/95 backdrop-blur-xl shadow-[0_1px_12px_rgba(0,0,0,0.5)]' : 'bg-transparent'}`}>
-        <div className="max-w-7xl mx-auto h-16 px-6 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-nv-primary-container/20 border border-nv-primary/20 flex items-center justify-center">
-              <span className="material-symbols-outlined text-[18px] text-nv-primary">verified</span>
-            </div>
-            <span className="font-[family-name:var(--font-display)] text-[17px] text-nv-text font-semibold tracking-tight">NutriVerify</span>
-          </Link>
+    <div className="relative min-h-screen bg-[#0B0D0C] text-[#dde5d9] font-sans antialiased overflow-x-hidden flex flex-col selection:bg-primary-container selection:text-on-primary-container">
+      {/* ── Multi-Layer Ambient Background ── */}
+      <AmbientBackground variant="home" intensity="high" />
+      <CommandPalette />
 
-          <nav className="hidden md:flex items-center gap-1">
-            {[
-              { label: 'Product', href: '#how-it-works' },
-              { label: 'How It Works', href: '#methodology' },
-              { label: 'Analysis', href: '#engine' },
-              { label: 'AI Assistant', href: '#ai' },
-            ].map(item => (
-              <a key={item.label} href={item.href} className="px-3 py-1.5 text-[13px] font-[family-name:var(--font-body)] text-nv-text-muted hover:text-nv-text rounded-lg hover:bg-nv-surface-container-high/60 transition-colors">{item.label}</a>
-            ))}
+      {/* ── Fixed Navbar Matching Reference Image 1 ── */}
+      <header className="fixed top-0 left-0 right-0 w-full z-50 bg-[#071009]/90 backdrop-blur-xl border-b border-white/5">
+        <div className="h-16 w-full max-w-[1440px] mx-auto px-6 flex items-center justify-between gap-4">
+          {/* Brand Logo & Version Pill */}
+          <div className="flex items-center gap-3 shrink-0">
+            <Link to="/" className="flex items-center gap-2.5 group">
+              <div className="w-8 h-8 rounded-lg bg-[#C8FF4D] text-black flex items-center justify-center shadow-[0_0_15px_rgba(200,255,77,0.4)] group-hover:scale-105 transition-transform">
+                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  verified
+                </span>
+              </div>
+              <span className="text-lg tracking-tight text-white font-bold">
+                Nutri<span className="text-[#C8FF4D]">Verify</span>
+              </span>
+            </Link>
+
+            <span className="px-2 py-0.5 rounded-full bg-[#101A13] text-[#8BE28B] font-label-code text-[11px] font-semibold border border-white/10">
+              v2.6
+            </span>
+          </div>
+
+          {/* Center Navigation Links */}
+          <nav className="hidden lg:flex items-center gap-6">
+            <Link
+              to="/"
+              className="text-sm font-semibold text-[#C8FF4D] relative py-1 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#C8FF4D] after:rounded-full"
+            >
+              Home
+            </Link>
+            <Link to="/analyze" className="text-sm text-[#A9B4AA] hover:text-white transition-colors">
+              Analyze Hub
+            </Link>
+            <Link to="/camera-scan" className="text-sm text-[#A9B4AA] hover:text-white transition-colors">
+              Camera Scan
+            </Link>
+            <Link to="/upload" className="text-sm text-[#A9B4AA] hover:text-white transition-colors">
+              Upload Label
+            </Link>
+            <Link to="/manual" className="text-sm text-[#A9B4AA] hover:text-white transition-colors">
+              Manual Entry
+            </Link>
           </nav>
 
-          <div className="flex items-center gap-3">
-            <Link to="/login" className="px-4 py-2 text-[13px] font-[family-name:var(--font-body)] text-nv-text-muted hover:text-nv-text transition-colors">Sign In</Link>
-            <Link to="/register" className="px-4 py-2 bg-nv-primary-container/15 hover:bg-nv-primary-container/25 text-nv-primary text-[13px] font-medium rounded-lg border border-nv-primary/20 hover:border-nv-primary/40 transition-all">Get Started</Link>
+          {/* Right Status & User Pills */}
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="hidden xl:flex items-center gap-2 px-3 py-1 rounded-full bg-[#101A13] border border-white/10 text-xs text-[#8BE28B] font-label-code">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#8BE28B] animate-pulse" />
+              <span>AI Food Intelligence Lab • 21 CFR § 101 Synchronized</span>
+            </div>
+
+            <Link
+              to="/nutrisaathi"
+              className="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#101A13] hover:bg-[#142217] border border-white/10 text-xs font-semibold text-white transition-colors"
+            >
+              <span className="material-symbols-outlined text-[17px] text-[#8BE28B]">smart_toy</span>
+              <span>NutriVerify AI</span>
+            </Link>
+
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#101A13] hover:bg-[#142217] border border-white/10 transition-colors"
+            >
+              <div className="w-6 h-6 rounded-full bg-[#C8FF4D] text-black flex items-center justify-center font-bold text-xs">
+                K
+              </div>
+              <span className="text-xs font-semibold text-white">Kayalvizhi</span>
+            </Link>
           </div>
         </div>
       </header>
 
-      <main>
-        {/* ───────── HERO ───────── */}
-        <section className="relative min-h-screen flex items-center overflow-hidden">
-          {/* Background effects */}
-          <div className="absolute inset-0">
-            <GoldParticles />
-            <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-gradient-radial from-nv-primary-container/8 via-transparent to-transparent rounded-full blur-[120px] pointer-events-none" style={{ background: 'radial-gradient(ellipse, rgba(212,175,55,0.06) 0%, transparent 70%)' }} />
-            <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-gradient-to-tl from-nv-tertiary/4 to-transparent blur-[100px] pointer-events-none" />
-          </div>
-
-          <div className="relative max-w-7xl mx-auto px-6 pt-24 pb-20 w-full">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
-              {/* Left — Text */}
-              <div className="lg:col-span-6 flex flex-col">
-                <div className="inline-flex items-center gap-2 mb-6 self-start">
-                  <span className="h-px w-8 bg-nv-primary/50"></span>
-                  <span className="text-[11px] font-[family-name:var(--font-mono)] text-nv-primary uppercase tracking-[0.2em]">AI-Assisted Label Verification</span>
+      {/* ── Main Landing Hero Section ── */}
+      <main className="relative z-10 w-full pt-16 flex-1 flex flex-col">
+        {/* SECTION 1: HERO MATCHING IMAGE 1 */}
+        <section className="relative w-full overflow-hidden pt-8 pb-12">
+          <div className="max-w-[1440px] mx-auto px-6 w-full">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center min-h-[calc(88vh-80px)]">
+              {/* Left Column: Hero Copy & Feature Row */}
+              <div className="lg:col-span-6 flex flex-col gap-6 z-10">
+                {/* Eyebrow Pill */}
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#102014]/90 border border-[#8BE28B]/30 text-xs font-semibold text-[#8BE28B] w-fit shadow-[0_0_15px_rgba(139,226,139,0.15)]">
+                  <span className="text-[#C8FF4D]">✨</span>
+                  <span>Smarter Food Choices • Safer You</span>
                 </div>
 
-                <h1 className="font-[family-name:var(--font-display)] text-[clamp(36px,5vw,64px)] leading-[1.05] tracking-[-0.03em] font-semibold mb-6">
-                  <span className="text-nv-text">Beyond the</span><br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-nv-primary via-nv-primary-fixed to-nv-text">Printed Claim.</span>
+                {/* Primary Hero Heading */}
+                <h1 className="text-4xl sm:text-5xl lg:text-[58px] font-black tracking-tight text-white leading-[1.08]">
+                  Decode Your Food.<br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#C8FF4D] via-[#8BE28B] to-[#C8FF4D]">
+                    Verify What You Eat.
+                  </span>
                 </h1>
 
-                <p className="text-[16px] font-[family-name:var(--font-body)] text-nv-text-muted max-w-md leading-relaxed mb-8">
-                  Understand what the label says. Verify what the evidence supports.
+                {/* Subtitle */}
+                <p className="text-base sm:text-lg text-[#A9B4AA] max-w-xl leading-relaxed">
+                  NutriVerify uses AI-powered analysis to decode food labels, check ingredients, detect allergens, and verify health claims — so you can eat with confidence.
                 </p>
 
-                <div className="flex flex-wrap items-center gap-4">
-                  <Link to="/register" className="group flex items-center gap-2.5 px-6 py-3 bg-nv-primary-container hover:bg-nv-primary text-nv-on-primary-container font-[family-name:var(--font-display)] text-[15px] font-semibold rounded-xl shadow-[0_0_24px_rgba(212,175,55,0.2)] hover:shadow-[0_0_40px_rgba(242,202,80,0.35)] transition-all">
-                    <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">biotech</span>
-                    Analyze a Food Label
+                {/* Feature Icon Pills Grid Row */}
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <Link
+                    to="/ingredients"
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#0D1811]/90 hover:bg-[#142318] border border-white/10 hover:border-[#8BE28B]/40 text-xs font-semibold text-white transition-all shadow-sm group"
+                  >
+                    <span className="material-symbols-outlined text-[17px] text-[#8BE28B] group-hover:scale-110 transition-transform">search</span>
+                    <span>Ingredient Analysis</span>
                   </Link>
-                  <a href="#methodology" className="flex items-center gap-2 px-6 py-3 bg-nv-surface-container-high/60 hover:bg-nv-surface-container-high text-nv-text text-[15px] font-[family-name:var(--font-body)] rounded-xl border border-nv-outline-variant/30 hover:border-nv-outline-variant/50 transition-all">
-                    <span className="material-symbols-outlined text-[18px]">arrow_downward</span>
-                    How It Works
-                  </a>
+
+                  <Link
+                    to="/allergens"
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#0D1811]/90 hover:bg-[#142318] border border-white/10 hover:border-[#8BE28B]/40 text-xs font-semibold text-white transition-all shadow-sm group"
+                  >
+                    <span className="material-symbols-outlined text-[17px] text-[#8BE28B] group-hover:scale-110 transition-transform">shield</span>
+                    <span>Allergen Detection</span>
+                  </Link>
+
+                  <Link
+                    to="/claims"
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#0D1811]/90 hover:bg-[#142318] border border-white/10 hover:border-[#8BE28B]/40 text-xs font-semibold text-white transition-all shadow-sm group"
+                  >
+                    <span className="material-symbols-outlined text-[17px] text-[#8BE28B] group-hover:scale-110 transition-transform">verified</span>
+                    <span>Claim Verification</span>
+                  </Link>
+
+                  <Link
+                    to="/nutrition"
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#0D1811]/90 hover:bg-[#142318] border border-white/10 hover:border-[#8BE28B]/40 text-xs font-semibold text-white transition-all shadow-sm group"
+                  >
+                    <span className="material-symbols-outlined text-[17px] text-[#8BE28B] group-hover:scale-110 transition-transform">bar_chart</span>
+                    <span>Nutrition Insights</span>
+                  </Link>
+
+                  <Link
+                    to="/compare"
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#0D1811]/90 hover:bg-[#142318] border border-white/10 hover:border-[#8BE28B]/40 text-xs font-semibold text-white transition-all shadow-sm group"
+                  >
+                    <span className="material-symbols-outlined text-[17px] text-[#8BE28B] group-hover:scale-110 transition-transform">compare_arrows</span>
+                    <span>Compare Products</span>
+                  </Link>
+                </div>
+
+                {/* Main Action CTAs */}
+                <div className="flex flex-wrap items-center gap-4 pt-2">
+                  <Link
+                    to="/camera-scan"
+                    className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-full bg-[#C8FF4D] text-black font-extrabold text-sm shadow-[0_0_24px_rgba(200,255,77,0.4)] hover:shadow-[0_0_32px_rgba(200,255,77,0.6)] hover:brightness-110 active:scale-95 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">photo_camera</span>
+                    <span>Scan New Label</span>
+                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                  </Link>
+
+                  <button
+                    onClick={() => handleRunDemo(0)}
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-[#101A13]/90 hover:bg-[#16241b] text-white font-bold text-sm border border-white/15 backdrop-blur-md transition-all active:scale-95 shadow-md"
+                  >
+                    <span className="material-symbols-outlined text-[20px] text-[#C8FF4D]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      play_arrow
+                    </span>
+                    <span>Watch Demo</span>
+                  </button>
                 </div>
               </div>
+              {/* Right Column: Visual Product Showcase & Analysis Results Glass Panel with 3D Orbital Planets */}
+              <div className="lg:col-span-6 relative flex items-center justify-center py-6">
+                {/* 3D Planetary Orbit Rings & Particle Streams */}
+                <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-visible">
+                  {/* Outer Glowing Elliptical Orbit Track 1 */}
+                  <div className="absolute w-[680px] h-[360px] rounded-[100%] border border-[#8BE28B]/30 rotate-[-18deg] shadow-[0_0_25px_rgba(139,226,139,0.15)] animate-spin-slow">
+                    {/* Revolving Planet Node 1 */}
+                    <div className="absolute top-0 left-1/4 w-3.5 h-3.5 rounded-full bg-[#C8FF4D] shadow-[0_0_15px_#C8FF4D]" />
+                    {/* Revolving Satellite Node 2 */}
+                    <div className="absolute bottom-4 right-1/4 w-2 h-2 rounded-full bg-[#8BE28B] shadow-[0_0_10px_#8BE28B]" />
+                  </div>
 
-              {/* Right — Floating Product Visualization */}
-              <div className="lg:col-span-6 relative flex justify-center lg:justify-end">
-                <div className="absolute -inset-8 bg-gradient-to-br from-nv-primary/5 to-nv-tertiary/3 rounded-3xl blur-2xl pointer-events-none" />
+                  {/* Secondary Tilted Elliptical Orbit Track 2 */}
+                  <div className="absolute w-[620px] h-[310px] rounded-[100%] border border-[#C8FF4D]/25 rotate-[24deg] shadow-[0_0_20px_rgba(200,255,77,0.12)] animate-spin-reverse-slow">
+                    {/* Revolving Planet Node 3 */}
+                    <div className="absolute top-6 right-1/3 w-3 h-3 rounded-full bg-[#8BE28B] shadow-[0_0_12px_#8BE28B]" />
+                    {/* Micro Photon Node */}
+                    <div className="absolute bottom-8 left-1/3 w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_#ffffff]" />
+                  </div>
 
-                <div className="relative w-full max-w-[420px]">
-                  {/* Floating demo analysis card */}
-                  <div className="animate-subtle-float glass-card rounded-2xl p-6 gold-glow-md">
-                    {/* Card header */}
-                    <div className="flex items-start justify-between mb-5">
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-nv-primary animate-pulse"></span>
-                          <span className="text-[10px] font-[family-name:var(--font-mono)] text-nv-primary uppercase tracking-[0.15em]">Demo Analysis</span>
-                        </div>
-                        <h3 className="font-[family-name:var(--font-display)] text-[20px] font-semibold text-nv-text">Organic Almond Milk</h3>
-                        <p className="text-[12px] font-[family-name:var(--font-mono)] text-nv-text-dim mt-0.5">PureNutri Labs · Batch #ALM-90214</p>
-                      </div>
-                      <span className="text-[10px] font-[family-name:var(--font-mono)] text-nv-tertiary bg-nv-tertiary/10 px-2 py-0.5 rounded">SAMPLE</span>
-                    </div>
+                  {/* Floating Cosmic Atmosphere glow */}
+                  <div className="absolute w-[500px] h-[500px] rounded-full bg-[#8BE28B]/12 blur-[140px]" />
+                </div>
 
-                    {/* Score rings */}
-                    <div className="grid grid-cols-2 gap-4 mb-5">
-                      <div className="bg-nv-surface/60 rounded-xl p-3 flex flex-col items-center">
-                        <ScoreRing score={97} color="#f2ca50" label="Authenticity" />
-                        <span className="text-[10px] font-[family-name:var(--font-mono)] text-nv-text-dim mt-1">Trusted Verdict</span>
-                      </div>
-                      <div className="bg-nv-surface/60 rounded-xl p-3 flex flex-col items-center">
-                        <ScoreRing score={94} color="#5de88e" label="Health Quality" />
-                        <span className="text-[10px] font-[family-name:var(--font-mono)] text-nv-text-dim mt-1">Grade A Optimal</span>
-                      </div>
-                    </div>
+                <div className="relative z-10 w-full max-w-[580px] grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                  {/* Realistic Green Framed Product Jar Card with Scanner Brackets */}
+                  <div className="sm:col-span-5 relative rounded-2xl bg-[#09120B]/95 border-2 border-[#8BE28B]/60 p-4 shadow-[0_0_35px_rgba(139,226,139,0.25)] flex flex-col items-center justify-between text-center overflow-hidden backdrop-blur-xl group">
+                    {/* Futuristic Corner Reticles */}
+                    <div className="absolute top-2 left-2 w-3 h-3 border-t-2 border-l-2 border-[#C8FF4D]" />
+                    <div className="absolute top-2 right-2 w-3 h-3 border-t-2 border-r-2 border-[#C8FF4D]" />
+                    <div className="absolute bottom-2 left-2 w-3 h-3 border-b-2 border-l-2 border-[#C8FF4D]" />
+                    <div className="absolute bottom-2 right-2 w-3 h-3 border-b-2 border-r-2 border-[#C8FF4D]" />
 
-                    {/* Claim results */}
-                    <div className="space-y-2">
-                      {[
-                        { icon: 'check_circle', text: '"Zero Added Sugars"', badge: 'Confirmed', color: 'text-nv-tertiary' },
-                        { icon: 'check_circle', text: '"Cold Pressed Almonds"', badge: 'Corroborated 98%', color: 'text-nv-tertiary' },
-                        { icon: 'info', text: '"Calcium Rich (30% DV)"', badge: 'Synthetic Fortified', color: 'text-nv-primary' },
-                      ].map((item, i) => (
-                        <div key={i} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-nv-surface-container/40 transition-colors">
-                          <span className="flex items-center gap-2 text-[13px] text-nv-text">
-                            <span className={`material-symbols-outlined text-[15px] ${item.color}`}>{item.icon}</span>
-                            {item.text}
-                          </span>
-                          <span className={`text-[10px] font-[family-name:var(--font-mono)] ${item.color}`}>{item.badge}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Footer */}
-                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-nv-outline-variant/20">
-                      <span className="text-[10px] font-[family-name:var(--font-mono)] text-nv-text-dim flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[12px]">fingerprint</span>
-                        3 / 3 Claims Audited
+                    {/* Top status tag */}
+                    <div className="w-full flex items-center justify-center mb-2">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#142A1A] text-[#8BE28B] text-[11px] font-bold border border-[#8BE28B]/40 shadow-sm">
+                        <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                        <span>Scan Complete</span>
                       </span>
-                      <span className="text-[10px] font-[family-name:var(--font-mono)] text-nv-primary">DEMO MODE</span>
+                    </div>
+
+                    {/* Realistic Product Canister Photography Representation */}
+                    <div className="relative w-36 h-48 rounded-xl bg-gradient-to-b from-[#16271a] via-[#0d1a10] to-[#071009] border border-[#8BE28B]/40 flex flex-col items-center justify-between p-3 my-2 shadow-[inset_0_0_20px_rgba(0,0,0,0.8)] overflow-hidden">
+                      {/* Canister Lid with Ribbing */}
+                      <div className="w-20 h-5 rounded-t-lg bg-gradient-to-r from-[#203625] via-[#2f4f36] to-[#203625] border-b-2 border-[#8BE28B]/50 flex items-center justify-center shadow-md">
+                        <div className="w-12 h-1 bg-white/20 rounded-full" />
+                      </div>
+
+                      {/* Canister Body Label */}
+                      <div className="w-full flex-1 rounded-lg bg-[#0A140D]/95 border border-white/10 flex flex-col items-center justify-center p-2 text-center my-1 shadow-inner relative">
+                        {/* Organic Leaf Emblem */}
+                        <div className="w-5 h-5 rounded-full bg-[#8BE28B]/20 text-[#8BE28B] flex items-center justify-center mb-0.5">
+                          <span className="material-symbols-outlined text-[13px]">eco</span>
+                        </div>
+                        <span className="text-[9px] uppercase font-bold text-[#8BE28B] tracking-wider">Plant Based</span>
+                        <span className="text-xs font-black text-white leading-tight mt-0.5 tracking-wide">ORGANIC<br />PROTEIN</span>
+                        <div className="flex items-center gap-1 mt-1 text-[8px] font-mono text-[#A9B4AA]">
+                          <span>24g PRO</span>
+                          <span>•</span>
+                          <span>500g</span>
+                        </div>
+                      </div>
+
+                      {/* Bottom Certification Badges */}
+                      <div className="w-full flex items-center justify-between text-[8px] font-label-code text-[#8BE28B] px-1">
+                        <span>NON-GMO</span>
+                        <span>GLUTEN-FREE</span>
+                      </div>
+
+                      {/* Holographic Laser Sweep Effect */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#C8FF4D]/15 to-transparent h-6 w-full animate-scan" />
+                    </div>
+
+                    {/* Live Spectral Status Bar */}
+                    <div className="w-full flex items-center justify-between px-2 pt-1 text-[10px] text-[#8BE28B] font-label-code">
+                      <span>Live Spectral OCR</span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-[#C8FF4D] animate-ping" />
+                        <span className="text-[#C8FF4D] font-bold">LOCKED</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Floating Glass Analysis Results Panel */}
+                  <div className="sm:col-span-7 rounded-2xl bg-[#0C150E]/95 backdrop-blur-2xl border border-white/15 p-5 shadow-[0_0_35px_rgba(0,0,0,0.7)] flex flex-col gap-3.5">
+                    {/* Header: Title + Verified Badge */}
+                    <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[#8BE28B] text-[18px]">insights</span>
+                        <h3 className="text-sm font-bold text-white">Analysis Results</h3>
+                      </div>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#142A1A] text-[#8BE28B] text-[11px] font-bold border border-[#8BE28B]/40 shadow-sm">
+                        <span className="material-symbols-outlined text-[13px]">verified</span>
+                        <span>Verified</span>
+                      </span>
+                    </div>
+
+                    {/* Results Item List */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#121E15] border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-[#182a1d] text-[#8BE28B] flex items-center justify-center">
+                            <span className="material-symbols-outlined text-[16px]">biotech</span>
+                          </div>
+                          <div>
+                            <div className="text-[10px] text-[#A9B4AA] font-semibold uppercase">Ingredients</div>
+                            <div className="text-xs font-bold text-white">Safe &amp; Natural</div>
+                          </div>
+                        </div>
+                        <span className="w-5 h-5 rounded-full bg-[#1A3320] text-[#8BE28B] flex items-center justify-center text-xs font-bold">✓</span>
+                      </div>
+
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#121E15] border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-[#182a1d] text-[#8BE28B] flex items-center justify-center">
+                            <span className="material-symbols-outlined text-[16px]">shield</span>
+                          </div>
+                          <div>
+                            <div className="text-[10px] text-[#A9B4AA] font-semibold uppercase">Allergens</div>
+                            <div className="text-xs font-bold text-white">No Known Allergens</div>
+                          </div>
+                        </div>
+                        <span className="w-5 h-5 rounded-full bg-[#1A3320] text-[#8BE28B] flex items-center justify-center text-xs font-bold">✓</span>
+                      </div>
+
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#121E15] border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-[#182a1d] text-[#8BE28B] flex items-center justify-center">
+                            <span className="material-symbols-outlined text-[16px]">bar_chart</span>
+                          </div>
+                          <div>
+                            <div className="text-[10px] text-[#A9B4AA] font-semibold uppercase">Nutrition</div>
+                            <div className="text-xs font-bold text-white">High Protein • 120 kcal</div>
+                          </div>
+                        </div>
+                        <span className="w-5 h-5 rounded-full bg-[#1A3320] text-[#8BE28B] flex items-center justify-center text-xs font-bold">✓</span>
+                      </div>
+
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#121E15] border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-[#182a1d] text-[#8BE28B] flex items-center justify-center">
+                            <span className="material-symbols-outlined text-[16px]">verified</span>
+                          </div>
+                          <div>
+                            <div className="text-[10px] text-[#A9B4AA] font-semibold uppercase">Claims</div>
+                            <div className="text-xs font-bold text-white">Verified Clean</div>
+                          </div>
+                        </div>
+                        <span className="w-5 h-5 rounded-full bg-[#1A3320] text-[#8BE28B] flex items-center justify-center text-xs font-bold">✓</span>
+                      </div>
+                    </div>
+
+                    {/* Overall Safety Bottom Block with 98% Gauge */}
+                    <div className="pt-2 border-t border-white/5 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-[#142A1A] text-[#8BE28B] flex items-center justify-center">
+                          <span className="material-symbols-outlined text-[18px]">verified_user</span>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-[#A9B4AA] uppercase font-semibold">Overall Safety</div>
+                          <div className="text-sm font-extrabold text-[#8BE28B]">Excellent</div>
+                        </div>
+                      </div>
+
+                      <div className="relative w-12 h-12 flex items-center justify-center">
+                        <svg className="w-12 h-12 -rotate-90" viewBox="0 0 36 36">
+                          <path
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                            fill="none"
+                            stroke="#142217"
+                            strokeWidth="3.5"
+                          />
+                          <path
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                            fill="none"
+                            stroke="#C8FF4D"
+                            strokeWidth="3.5"
+                            strokeDasharray="98, 100"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        <span className="absolute font-bold text-xs text-white">98%</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+
+            {/* Bottom Ticker & Stats Bar matching Reference Image 1 */}
+            <div className="mt-12 pt-6 border-t border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              {/* Built with AI left label */}
+              <div className="flex items-center gap-2 text-xs font-bold text-[#A9B4AA] font-label-code">
+                <span className="text-[#C8FF4D] text-sm">☼</span>
+                <span>BUILT WITH AI • TRUSTED BY MILLIONS</span>
+              </div>
+
+              {/* Center 3 Stats */}
+              <div className="flex items-center gap-8 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#142318] text-[#8BE28B] flex items-center justify-center border border-white/5">
+                    <span className="material-symbols-outlined text-[18px]">inventory_2</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-base font-extrabold text-white">10K+</span>
+                    <span className="text-[11px] text-[#A9B4AA]">Products Analyzed</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#142318] text-[#C8FF4D] flex items-center justify-center border border-white/5">
+                    <span className="material-symbols-outlined text-[18px]">track_changes</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-base font-extrabold text-white">99.8%</span>
+                    <span className="text-[11px] text-[#A9B4AA]">Accuracy Rate</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#142318] text-[#8BE28B] flex items-center justify-center border border-white/5">
+                    <span className="material-symbols-outlined text-[18px]">eco</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-base font-extrabold text-white">50+</span>
+                    <span className="text-[11px] text-[#A9B4AA]">Food Categories</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Signature Cursive Script */}
+              <div className="font-['Caveat',cursive] text-2xl text-[#8BE28B] tracking-wide self-end md:self-auto">
+                Better Food. Healthier Tomorrow.
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* ───────── THE PROBLEM ───────── */}
-        <section className="py-32 bg-nv-surface-container-lowest">
-          <div className="max-w-5xl mx-auto px-6">
-            <div className="max-w-2xl mb-16">
-              <span className="text-[11px] font-[family-name:var(--font-mono)] text-nv-primary uppercase tracking-[0.2em] block mb-3">The Problem</span>
-              <h2 className="font-[family-name:var(--font-display)] text-[clamp(28px,3.5vw,40px)] leading-[1.15] tracking-[-0.02em] font-semibold text-nv-text mb-4">
-                The label tells a story.<br />
-                <span className="text-nv-text-muted">The evidence tells the rest.</span>
-              </h2>
-              <p className="text-[16px] text-nv-text-muted leading-relaxed">
-                Ultra-processed foods hide behind deceptive packaging, clever font sizing, and misleading marketing. NutriVerify reveals the gap between what packages promise and what the evidence shows.
+        {/* SECTION 2: THREE WAYS TO VERIFY */}
+        <section className="relative w-full py-space-xl bg-[#091009]/70 border-t border-white/5">
+          <div className="max-w-[1360px] mx-auto px-gutter w-full flex flex-col gap-space-lg">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-space-sm">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-secondary" />
+                  <span className="font-label-caps text-label-caps uppercase text-secondary font-bold tracking-wider">
+                    Input Channels
+                  </span>
+                </div>
+                <h2 className="font-headline-xl text-headline-xl text-on-surface font-bold">
+                  Three Ways to Verify Your Food
+                </h2>
+              </div>
+              <p className="font-body-md text-body-md text-on-surface-variant max-w-md">
+                Whether you have packaging in hand, an image in your gallery, or custom nutrient values, NutriVerify produces a unified verification dossier.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                { icon: 'gpp_bad', title: 'Misleading Claims', desc: '100% All-Natural Fruit Spread may contain high-fructose corn syrup as its primary ingredient — not fruit.', color: 'text-nv-error', bg: 'bg-nv-error/5 border-nv-error/15' },
-                { icon: 'biotech', title: 'Hidden Complexity', desc: 'A short ingredient list can still contain 20+ chemical additives disguised under scientific nomenclature.', color: 'text-nv-primary', bg: 'bg-nv-primary/5 border-nv-primary/15' },
-                { icon: 'psychology', title: 'Nutrition Confusion', desc: 'Serving size manipulation, obscure measurements, and misleading daily value percentages obscure the real impact.', color: 'text-nv-tertiary', bg: 'bg-nv-tertiary/5 border-nv-tertiary/15' },
-              ].map((item) => (
-                <div key={item.title} className={`rounded-xl p-6 border ${item.bg} hover:scale-[1.02] transition-transform`}>
-                  <span className={`material-symbols-outlined text-[28px] ${item.color} block mb-4`}>{item.icon}</span>
-                  <h3 className="font-[family-name:var(--font-display)] text-[18px] font-semibold text-nv-text mb-2">{item.title}</h3>
-                  <p className="text-[14px] text-nv-text-muted leading-relaxed">{item.desc}</p>
+              {/* Card 1: Camera Scan */}
+              <Link
+                to="/camera-scan"
+                className="group flex flex-col justify-between rounded-2xl bg-[#101A13]/90 hover:bg-[#141F17] p-7 border border-white/10 hover:border-primary-container/40 transition-all duration-300 hover:-translate-y-1.5 shadow-lg hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)]"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-14 h-14 rounded-xl bg-[#141F17] text-primary-container flex items-center justify-center border border-white/5 group-hover:scale-110 transition-transform">
+                      <span className="material-symbols-outlined text-[30px]">photo_camera</span>
+                    </div>
+                    <span className="font-label-code text-sm font-bold text-primary-container">
+                      01
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary-container transition-colors">
+                    Camera Scan
+                  </h3>
+                  <p className="text-sm text-[#A9B4AA] leading-relaxed mb-6">
+                    Analyze a food label directly through your device camera with real-time text detection.
+                  </p>
                 </div>
-              ))}
+                <div className="inline-flex items-center gap-2 text-primary-container font-bold text-sm group-hover:gap-3 transition-all pt-3 border-t border-white/5">
+                  <span>Launch Scanner</span>
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                </div>
+              </Link>
+
+              {/* Card 2: Upload Label */}
+              <Link
+                to="/upload"
+                className="group flex flex-col justify-between rounded-2xl bg-[#101A13]/90 hover:bg-[#141F17] p-7 border border-white/10 hover:border-[#8BE28B]/40 transition-all duration-300 hover:-translate-y-1.5 shadow-lg hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)]"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-14 h-14 rounded-xl bg-[#141F17] text-[#8BE28B] flex items-center justify-center border border-white/5 group-hover:scale-110 transition-transform">
+                      <span className="material-symbols-outlined text-[30px]">cloud_upload</span>
+                    </div>
+                    <span className="font-label-code text-sm font-bold text-[#8BE28B]">
+                      02
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2 group-hover:text-[#8BE28B] transition-colors">
+                    Upload Label
+                  </h3>
+                  <p className="text-sm text-[#A9B4AA] leading-relaxed mb-6">
+                    Upload a packaging image for OCR-powered verification and multi-column parsing.
+                  </p>
+                </div>
+                <div className="inline-flex items-center gap-2 text-[#8BE28B] font-bold text-sm group-hover:gap-3 transition-all pt-3 border-t border-white/5">
+                  <span>Upload Label</span>
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                </div>
+              </Link>
+
+              {/* Card 3: Manual Entry */}
+              <Link
+                to="/manual"
+                className="group flex flex-col justify-between rounded-2xl bg-[#101A13]/90 hover:bg-[#141F17] p-7 border border-white/10 hover:border-[#FFB86B]/40 transition-all duration-300 hover:-translate-y-1.5 shadow-lg hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)]"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-14 h-14 rounded-xl bg-[#141F17] text-[#FFB86B] flex items-center justify-center border border-white/5 group-hover:scale-110 transition-transform">
+                      <span className="material-symbols-outlined text-[30px]">edit_note</span>
+                    </div>
+                    <span className="font-label-code text-sm font-bold text-[#FFB86B]">
+                      03
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2 group-hover:text-[#FFB86B] transition-colors">
+                    Manual Entry
+                  </h3>
+                  <p className="text-sm text-[#A9B4AA] leading-relaxed mb-6">
+                    Enter nutrition and ingredient information manually with live compliance checking.
+                  </p>
+                </div>
+                <div className="inline-flex items-center gap-2 text-[#FFB86B] font-bold text-sm group-hover:gap-3 transition-all pt-3 border-t border-white/5">
+                  <span>Enter Manually</span>
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                </div>
+              </Link>
             </div>
           </div>
         </section>
 
-        {/* ───────── HOW IT WORKS ───────── */}
-        <section className="py-32" id="methodology">
-          <div className="max-w-6xl mx-auto px-6">
-            <div className="text-center mb-16">
-              <span className="text-[11px] font-[family-name:var(--font-mono)] text-nv-primary uppercase tracking-[0.2em] block mb-3">Methodology</span>
-              <h2 className="font-[family-name:var(--font-display)] text-[clamp(28px,3.5vw,40px)] tracking-[-0.02em] font-semibold text-nv-text">How NutriVerify Works</h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
-              {[
-                { num: '01', icon: 'qr_code_scanner', title: 'Capture', desc: 'Scan, photograph, or manually enter any food label.' },
-                { num: '02', icon: 'biotech', title: 'Analyze', desc: 'AI engines parse ingredients, nutrition, and marketing claims.' },
-                { num: '03', icon: 'fact_check', title: 'Verify', desc: 'Cross-reference claims against evidence and nutritional data.' },
-                { num: '04', icon: 'speed', title: 'Score', desc: 'Generate authenticity and health quality scores from 0-100.' },
-                { num: '05', icon: 'psychology', title: 'Explain', desc: 'Get clear, actionable insights and AI-powered explanations.' },
-              ].map((step, i) => (
-                <div key={step.num} className="relative text-center group">
-                  <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-nv-surface-container-high border border-nv-outline-variant/20 flex items-center justify-center group-hover:border-nv-primary/30 group-hover:bg-nv-primary-container/10 transition-all">
-                    <span className="material-symbols-outlined text-[24px] text-nv-text-muted group-hover:text-nv-primary transition-colors">{step.icon}</span>
-                  </div>
-                  <span className="text-[10px] font-[family-name:var(--font-mono)] text-nv-primary block mb-1">{step.num}</span>
-                  <h3 className="font-[family-name:var(--font-display)] text-[16px] font-semibold text-nv-text mb-1.5">{step.title}</h3>
-                  <p className="text-[13px] text-nv-text-muted leading-relaxed">{step.desc}</p>
-                  {i < 4 && (
-                    <div className="hidden md:block absolute top-7 left-[calc(50%+36px)] w-[calc(100%-72px)] h-px bg-gradient-to-r from-nv-outline-variant/30 to-nv-outline-variant/10" />
-                  )}
-                </div>
-              ))}
-            </div>
+        {/* SECTION 3: 5-STEP ALGORITHMIC PIPELINE & FLOWCHART */}
+        <section className="relative w-full py-12 bg-[#080E09]/80 border-y border-white/5">
+          <div className="max-w-[1360px] mx-auto px-6 w-full flex flex-col gap-8">
+            <AnalysisFlowchart />
           </div>
         </section>
 
-        {/* ───────── ANALYSIS ENGINE ───────── */}
-        <section className="py-32 bg-nv-surface-container-lowest" id="engine">
-          <div className="max-w-6xl mx-auto px-6">
-            <div className="text-center mb-16">
-              <span className="text-[11px] font-[family-name:var(--font-mono)] text-nv-primary uppercase tracking-[0.2em] block mb-3">Analysis Engine</span>
-              <h2 className="font-[family-name:var(--font-display)] text-[clamp(28px,3.5vw,40px)] tracking-[-0.02em] font-semibold text-nv-text mb-4">Six Verification Modules</h2>
-              <p className="text-[15px] text-nv-text-muted max-w-xl mx-auto">Each product passes through six independent verification engines before receiving its final analysis.</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {[
-                { icon: 'science', title: 'Ingredient Intelligence', desc: 'Classifies every ingredient by risk level — natural, moderate, or high concern — with detailed reasoning.' },
-                { icon: 'fact_check', title: 'Claim Verification', desc: 'Cross-references marketing claims against actual nutrition data and ingredient evidence.' },
-                { icon: 'balance', title: 'Nutrition Consistency', desc: 'Validates calorie-macronutrient relationships using Atwater factors and detects label contradictions.' },
-                { icon: 'verified_user', title: 'Authenticity Score', desc: 'Calculates a 0–100 trust index based on ingredient fidelity, claim alignment, and compliance.' },
-                { icon: 'monitor_heart', title: 'Health Quality', desc: 'Rates nutritional density against harmful adulterants for a clear health classification.' },
-                { icon: 'neurology', title: 'Recommendations', desc: 'Generates personalized dietary guidance based on analysis results and nutritional science.' },
-              ].map((mod) => (
-                <div key={mod.title} className="bg-nv-surface-container rounded-xl p-6 border border-nv-outline-variant/15 hover:border-nv-outline-variant/30 hover:bg-nv-surface-container-high/50 transition-all group">
-                  <div className="w-10 h-10 rounded-xl bg-nv-primary-container/10 flex items-center justify-center mb-4 group-hover:bg-nv-primary-container/20 transition-colors">
-                    <span className="material-symbols-outlined text-[20px] text-nv-primary">{mod.icon}</span>
-                  </div>
-                  <h3 className="font-[family-name:var(--font-display)] text-[16px] font-semibold text-nv-text mb-2">{mod.title}</h3>
-                  <p className="text-[14px] text-nv-text-muted leading-relaxed">{mod.desc}</p>
-                </div>
-              ))}
-            </div>
+        {/* SECTION 4: INGREDIENT ORBIT & FORMULATION DECONSTRUCTION */}
+        <section className="relative w-full py-12">
+          <div className="max-w-[1360px] mx-auto px-6 w-full flex flex-col gap-8">
+            <IngredientOrbit />
           </div>
         </section>
 
-        {/* ───────── INTERACTIVE DEMO PREVIEW ───────── */}
-        <section className="py-32" id="demo">
-          <div className="max-w-6xl mx-auto px-6">
-            <div className="text-center mb-16">
-              <span className="text-[11px] font-[family-name:var(--font-mono)] text-nv-primary uppercase tracking-[0.2em] block mb-3">See It In Action</span>
-              <h2 className="font-[family-name:var(--font-display)] text-[clamp(28px,3.5vw,40px)] tracking-[-0.02em] font-semibold text-nv-text">Real Analysis, Real Results</h2>
-            </div>
+        {/* SECTION 5: 360 FOOD INTELLIGENCE MAP */}
+        <section className="relative w-full py-12 bg-[#080E09]/80 border-y border-white/5">
+          <div className="max-w-[1360px] mx-auto px-6 w-full flex flex-col gap-8">
+            <FoodIntelligenceMap />
+          </div>
+        </section>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-              {/* Product label mockup */}
-              <div className="bg-nv-surface-container rounded-2xl p-8 border border-nv-outline-variant/15">
-                <div className="flex items-center gap-2 mb-6">
-                  <span className="w-2 h-2 rounded-full bg-nv-tertiary"></span>
-                  <span className="text-[11px] font-[family-name:var(--font-mono)] text-nv-tertiary uppercase tracking-wider">Verified Product</span>
-                </div>
-
-                <h3 className="font-[family-name:var(--font-display)] text-[22px] font-semibold text-nv-text mb-1">Organic Almond Milk</h3>
-                <p className="text-[13px] font-[family-name:var(--font-mono)] text-nv-text-dim mb-6">PureNutri Laboratories · 1L</p>
-
-                <div className="space-y-3 mb-6">
-                  <div className="flex justify-between py-2 border-b border-nv-outline-variant/15">
-                    <span className="text-[13px] text-nv-text-muted">Calories</span>
-                    <span className="text-[13px] font-[family-name:var(--font-mono)] text-nv-text font-medium">60 kcal</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-nv-outline-variant/15">
-                    <span className="text-[13px] text-nv-text-muted">Protein</span>
-                    <span className="text-[13px] font-[family-name:var(--font-mono)] text-nv-text font-medium">2g</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-nv-outline-variant/15">
-                    <span className="text-[13px] text-nv-text-muted">Sugar</span>
-                    <span className="text-[13px] font-[family-name:var(--font-mono)] text-nv-tertiary font-medium">0g</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-nv-outline-variant/15">
-                    <span className="text-[13px] text-nv-text-muted">Sodium</span>
-                    <span className="text-[13px] font-[family-name:var(--font-mono)] text-nv-text font-medium">120mg</span>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {['Organic', 'No Added Sugar', 'Dairy-Free'].map(c => (
-                    <span key={c} className="text-[11px] font-[family-name:var(--font-mono)] text-nv-tertiary bg-nv-tertiary/10 px-2.5 py-1 rounded-full">{c}</span>
-                  ))}
-                </div>
+        {/* SECTION 6: INTERACTIVE TEST BENCH */}
+        <section id="test-bench-section" className="relative w-full py-12">
+          <div className="max-w-[1360px] mx-auto px-6 w-full flex flex-col gap-6">
+            <div className="flex flex-col max-w-2xl">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="material-symbols-outlined text-[#C8FF4D] text-[18px]">biotech</span>
+                <span className="font-mono text-xs uppercase text-[#C8FF4D] font-bold tracking-wider">
+                  Interactive Test Bench
+                </span>
               </div>
-
-              {/* Analysis results */}
-              <div className="space-y-5">
-                {/* Scores */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-nv-surface-container rounded-2xl p-5 border border-nv-outline-variant/15 flex flex-col items-center">
-                    <ScoreRing score={97} color="#f2ca50" label="Authenticity" />
-                    <span className="text-[11px] font-[family-name:var(--font-mono)] text-nv-text-dim mt-2">Trusted Verdict</span>
-                  </div>
-                  <div className="bg-nv-surface-container rounded-2xl p-5 border border-nv-outline-variant/15 flex flex-col items-center">
-                    <ScoreRing score={94} color="#5de88e" label="Health Quality" />
-                    <span className="text-[11px] font-[family-name:var(--font-mono)] text-nv-text-dim mt-2">Grade A</span>
-                  </div>
-                </div>
-
-                {/* Claim verdicts */}
-                <div className="bg-nv-surface-container rounded-2xl p-5 border border-nv-outline-variant/15">
-                  <h4 className="text-[12px] font-[family-name:var(--font-mono)] text-nv-text-dim uppercase tracking-wider mb-3">Claim Verification</h4>
-                  <div className="space-y-2.5">
-                    {[
-                      { claim: 'Zero Added Sugars', verdict: 'Confirmed', v: 'text-nv-tertiary' },
-                      { claim: 'Cold Pressed Almonds', verdict: 'Corroborated (98%)', v: 'text-nv-tertiary' },
-                      { claim: 'Calcium Rich (30% DV)', verdict: 'Synthetic Fortified', v: 'text-nv-primary' },
-                    ].map(c => (
-                      <div key={c.claim} className="flex items-center justify-between">
-                        <span className="text-[13px] text-nv-text">{c.claim}</span>
-                        <span className={`text-[11px] font-[family-name:var(--font-mono)] ${c.v}`}>{c.verdict}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Recommendations */}
-                <div className="bg-nv-surface-container rounded-2xl p-5 border border-nv-outline-variant/15">
-                  <h4 className="text-[12px] font-[family-name:var(--font-mono)] text-nv-text-dim uppercase tracking-wider mb-3">Recommendations</h4>
-                  <div className="space-y-2">
-                    {[
-                      'Good source of plant-based calcium',
-                      'Low sodium — suitable for heart-healthy diets',
-                      'Consider pairing with protein-rich foods',
-                    ].map((r, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        <span className="material-symbols-outlined text-[14px] text-nv-tertiary mt-0.5">check_circle</span>
-                        <span className="text-[13px] text-nv-text-muted">{r}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ───────── AI ASSISTANT ───────── */}
-        <section className="py-32 bg-nv-surface-container-lowest" id="ai">
-          <div className="max-w-5xl mx-auto px-6">
-            <div className="text-center mb-16">
-              <span className="text-[11px] font-[family-name:var(--font-mono)] text-nv-primary uppercase tracking-[0.2em] block mb-3">AI Assistant</span>
-              <h2 className="font-[family-name:var(--font-display)] text-[clamp(28px,3.5vw,40px)] tracking-[-0.02em] font-semibold text-nv-text mb-4">
-                Ask the label.<br />Get the evidence.
+              <h2 className="text-2xl lg:text-3xl text-white font-black">
+                Test a Real-World Deceptive Label
               </h2>
-              <p className="text-[15px] text-nv-text-muted max-w-lg mx-auto">
-                NutriSaathi understands your actual analysis context — not generic nutrition FAQ. Ask anything about your analyzed products.
+              <p className="text-xs text-[#A9B4AA] mt-1">
+                Explore how NutriVerify dissects misleading wellness marketing. Toggle verification lenses below to view raw truth behind common beverage labels.
               </p>
             </div>
 
-            {/* Chat mockup */}
-            <div className="max-w-2xl mx-auto bg-nv-surface-container rounded-2xl border border-nv-outline-variant/20 overflow-hidden">
-              {/* Chat header */}
-              <div className="flex items-center gap-3 px-5 py-3 border-b border-nv-outline-variant/15 bg-nv-surface-container-low/50">
-                <div className="w-8 h-8 rounded-full bg-nv-primary-container/20 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[16px] text-nv-primary">smart_toy</span>
+            <div className="rounded-3xl bg-[#09120B]/95 p-6 lg:p-8 shadow-2xl grid grid-cols-1 lg:grid-cols-12 gap-6 items-start border border-[#8BE28B]/30 backdrop-blur-xl">
+              {/* Left: Product Sample Info & Lens Buttons */}
+              <div className="lg:col-span-5 flex flex-col gap-4">
+                <div className="p-4 rounded-2xl bg-[#0D1811] flex flex-col gap-3 border border-white/10 shadow-inner">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-[#C8FF4D] font-bold uppercase tracking-wider">
+                      FLAGGED PRODUCT SPECIMEN
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#331111] text-[#FF6B6B] text-[10px] font-bold border border-[#FF6B6B]/30">
+                      RISK: MEDIUM ⚠
+                    </span>
+                  </div>
+
+                  {/* High-Tech 3D Beverage Bottle Mockup */}
+                  <div className="relative w-full h-48 rounded-2xl overflow-hidden bg-gradient-to-b from-[#142618] to-[#080E09] border border-[#8BE28B]/30 flex items-center justify-center p-4 group">
+                    <div className="absolute inset-0 bg-radial-gradient from-[#8BE28B]/10 to-transparent pointer-events-none" />
+
+                    {/* Bottle Illustration */}
+                    <div className="relative z-10 w-24 h-40 rounded-2xl bg-gradient-to-b from-[#1A3320] to-[#0D1A10] border-2 border-[#8BE28B]/60 flex flex-col items-center justify-between p-2 shadow-[0_0_20px_rgba(139,226,139,0.3)]">
+                      <div className="w-8 h-3 rounded-t-sm bg-[#8BE28B]/40" />
+                      <div className="w-full flex-1 rounded bg-[#061008] p-1.5 flex flex-col items-center justify-center text-center my-1">
+                        <span className="text-[8px] font-bold text-[#8BE28B]">100% RAW</span>
+                        <span className="text-[10px] font-black text-white leading-tight">GREEN<br />CLEANSE</span>
+                        <span className="text-[7px] text-[#A9B4AA] mt-0.5">300 ml</span>
+                      </div>
+                      <span className="text-[7px] font-mono text-[#FFB86B]">DECEPTIVE LABEL</span>
+                    </div>
+
+                    {/* Scanning Laser Beam */}
+                    <div className="absolute inset-x-0 top-1/2 h-0.5 bg-[#C8FF4D] shadow-[0_0_12px_#C8FF4D] animate-pulse pointer-events-none" />
+
+                    <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-[10px] font-mono text-[#A9B4AA]">
+                      <span className="text-white font-bold">Green Cleanse Pro</span>
+                      <span className="text-[#8BE28B]">Barcode: 890103049102</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-[#A9B4AA]">
+                    <span>Serving Size: 300 ml</span>
+                    <span className="text-[#8BE28B] font-bold">Audit Dossier #C-1</span>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-[14px] font-[family-name:var(--font-display)] font-semibold text-nv-text block">NutriSaathi</span>
-                  <span className="text-[11px] font-[family-name:var(--font-mono)] text-nv-tertiary">AI Nutrition Assistant</span>
+
+                {/* Lens Selection Buttons */}
+                <div className="flex flex-col gap-2">
+                  <span className="text-[10px] font-mono text-[#A9B4AA] uppercase font-bold">
+                    Select Diagnostic Lens:
+                  </span>
+                  <div className="grid grid-cols-1 gap-2">
+                    <button
+                      onClick={() => setActiveLens('claims')}
+                      className={`flex items-center justify-between px-4 py-3 rounded-xl font-bold text-xs transition-all ${
+                        activeLens === 'claims'
+                          ? 'bg-[#C8FF4D] text-black shadow-[0_0_15px_rgba(200,255,77,0.35)]'
+                          : 'bg-[#0D1811] text-[#A9B4AA] hover:text-white border border-white/10 hover:border-[#8BE28B]/30'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[18px]">warning</span>
+                        <span>Deceptive Claim Flags</span>
+                      </span>
+                      <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                    </button>
+
+                    <button
+                      onClick={() => setActiveLens('nutrition')}
+                      className={`flex items-center justify-between px-4 py-3 rounded-xl font-bold text-xs transition-all ${
+                        activeLens === 'nutrition'
+                          ? 'bg-[#C8FF4D] text-black shadow-[0_0_15px_rgba(200,255,77,0.35)]'
+                          : 'bg-[#0D1811] text-[#A9B4AA] hover:text-white border border-white/10 hover:border-[#8BE28B]/30'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[18px]">pie_chart</span>
+                        <span>Macro Breakdown &amp; Sugars</span>
+                      </span>
+                      <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                    </button>
+
+                    <button
+                      onClick={() => setActiveLens('additives')}
+                      className={`flex items-center justify-between px-4 py-3 rounded-xl font-bold text-xs transition-all ${
+                        activeLens === 'additives'
+                          ? 'bg-[#C8FF4D] text-black shadow-[0_0_15px_rgba(200,255,77,0.35)]'
+                          : 'bg-[#0D1811] text-[#A9B4AA] hover:text-white border border-white/10 hover:border-[#8BE28B]/30'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[18px]">science</span>
+                        <span>Chemical Additives &amp; Preservatives</span>
+                      </span>
+                      <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Messages */}
-              <div className="p-5 space-y-4">
-                <div className="flex justify-end">
-                  <div className="max-w-[80%] bg-nv-primary-container/15 border border-nv-primary/15 px-4 py-2.5 rounded-2xl rounded-br-md">
-                    <p className="text-[14px] text-nv-text">Why did this product receive a 94 health score?</p>
-                  </div>
-                </div>
-                <div className="flex justify-start">
-                  <div className="max-w-[80%] bg-nv-surface-container-high/60 px-4 py-2.5 rounded-2xl rounded-bl-md">
-                    <p className="text-[14px] text-nv-text leading-relaxed">
-                      Based on <strong className="text-nv-primary">Organic Almond Milk</strong> — your Health Quality Score of <strong className="text-nv-tertiary">94/100</strong> reflects excellent nutritional density. Zero added sugar, low sodium (120mg), and natural ingredients contribute positively. The 6-point deduction comes from moderate protein (2g) and absence of dietary fiber.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <div className="max-w-[80%] bg-nv-primary-container/15 border border-nv-primary/15 px-4 py-2.5 rounded-2xl rounded-br-md">
-                    <p className="text-[14px] text-nv-text">What ingredients should I watch out for?</p>
-                  </div>
-                </div>
-                <div className="flex justify-start">
-                  <div className="max-w-[80%] bg-nv-surface-container-high/60 px-4 py-2.5 rounded-2xl rounded-bl-md">
-                    <p className="text-[14px] text-nv-text leading-relaxed">
-                      This product has a clean ingredient list. All ingredients are classified as <strong className="text-nv-tertiary">Low Concern</strong>. The gellan gum stabilizer is synthetic but approved and used in very small quantities. Overall — excellent choice.
-                    </p>
-                  </div>
-                </div>
-              </div>
+              {/* Right: Dynamic Diagnostic Display */}
+              <div className="lg:col-span-7 flex flex-col gap-4">
+                {activeLens === 'claims' && (
+                  <div className="flex flex-col gap-4 animate-fade-in-up">
+                    <div className="p-5 rounded-2xl bg-[#0D1811] flex flex-col gap-3 border border-white/10">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[#FFB86B]">gavel</span>
+                          <span>Front-of-Pack Claim Audit</span>
+                        </h3>
+                        <span className="px-2.5 py-0.5 rounded-full bg-[#331111] text-[#FF6B6B] text-[10px] font-bold border border-[#FF6B6B]/30">
+                          2 MISLEADING CLAIMS
+                        </span>
+                      </div>
 
-              {/* Input area */}
-              <div className="px-5 py-3 border-t border-nv-outline-variant/15 bg-nv-surface-container-low/30">
-                <div className="flex items-center gap-3 bg-nv-surface rounded-xl px-4 py-2.5 border border-nv-outline-variant/20">
-                  <span className="material-symbols-outlined text-[18px] text-nv-text-dim">chat</span>
-                  <span className="text-[14px] text-nv-text-dim">Ask about your analysis...</span>
-                  <span className="material-symbols-outlined text-[18px] text-nv-primary ml-auto">arrow_upward</span>
+                      <div className="space-y-2.5 mt-1">
+                        <div className="p-3.5 rounded-xl bg-[#080E09] flex flex-col gap-1 border border-white/5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-[#FF6B6B] flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-[16px]">cancel</span>
+                              “No Added Sugar”
+                            </span>
+                            <span className="text-[10px] font-mono text-[#FF6B6B] uppercase font-bold">
+                              Violates FSSAI §4.2
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[#A9B4AA] leading-relaxed">
+                            Detected <strong className="text-white">26g of free sugars</strong> derived from reconstituted white grape juice concentrate, functionally acting as added sweetener.
+                          </p>
+                        </div>
+
+                        <div className="p-3.5 rounded-xl bg-[#080E09] flex flex-col gap-1 border border-white/5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-[#FFB86B] flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-[16px]">help</span>
+                              “Active Cellular Detoxification”
+                            </span>
+                            <span className="text-[10px] font-mono text-[#FFB86B] uppercase font-bold">
+                              Unsubstantiated Claim
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[#A9B4AA] leading-relaxed">
+                            No approved clinical evidence registered under EFSA or FDA for detoxification via chlorophyll extract at the stated concentration (0.02%).
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-[#102014] flex items-center gap-3 border border-[#8BE28B]/30">
+                      <span className="material-symbols-outlined text-[#8BE28B] text-[24px]">eco</span>
+                      <div>
+                        <h4 className="text-xs font-bold text-white">NutriVerify Recommended Clean Swap</h4>
+                        <p className="text-[11px] text-[#A9B4AA]">
+                          Consider <em>Verdant Cold-Pressed Celery &amp; Lemon</em> — true zero-concentrate with only 3.2g natural sugars per 300ml.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeLens === 'nutrition' && (
+                  <div className="flex flex-col gap-4 animate-fade-in-up">
+                    <div className="p-5 rounded-2xl bg-[#0D1811] flex flex-col gap-3 border border-white/10">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[#8BE28B]">pie_chart</span>
+                          <span>Nutritional Composition (Per 300 ml)</span>
+                        </h3>
+                        <span className="text-xs font-mono text-[#C8FF4D] font-bold">
+                          168 kcal Total
+                        </span>
+                      </div>
+
+                      <div className="space-y-3 mt-1 text-xs">
+                        <div>
+                          <div className="flex justify-between text-[11px] mb-1 text-white">
+                            <span>Total Carbohydrates (32g)</span>
+                            <span className="text-[#FFB86B] font-bold">High (64% DV)</span>
+                          </div>
+                          <div className="w-full bg-[#142318] rounded-full h-2 overflow-hidden">
+                            <div className="bg-[#FFB86B] h-2 rounded-full" style={{ width: '78%' }} />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-[11px] mb-1 text-white">
+                            <span>Protein (1.2g)</span>
+                            <span className="text-[#A9B4AA]">Low (2.4% DV)</span>
+                          </div>
+                          <div className="w-full bg-[#142318] rounded-full h-2 overflow-hidden">
+                            <div className="bg-[#8BE28B] h-2 rounded-full" style={{ width: '12%' }} />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-[11px] mb-1 text-white">
+                            <span>Dietary Fiber (0.8g)</span>
+                            <span className="text-[#FF6B6B]">Stripped Pulp (Minimal)</span>
+                          </div>
+                          <div className="w-full bg-[#142318] rounded-full h-2 overflow-hidden">
+                            <div className="bg-[#FF6B6B] h-2 rounded-full" style={{ width: '8%' }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-[#0D1811] flex items-center justify-between border border-white/10">
+                      <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-[#8BE28B] text-[22px]">bloodtype</span>
+                        <div>
+                          <h4 className="text-xs font-bold text-white">Glycemic Impact Index</h4>
+                          <p className="text-[11px] text-[#A9B4AA]">High rapid-spike potential (Estimated GI: 68)</p>
+                        </div>
+                      </div>
+                      <span className="px-3 py-1 rounded-xl bg-[#142318] text-[#FFB86B] font-mono text-xs font-bold border border-white/10">
+                        GI: 68 / 100
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {activeLens === 'additives' && (
+                  <div className="flex flex-col gap-4 animate-fade-in-up">
+                    <div className="p-5 rounded-2xl bg-[#0D1811] flex flex-col gap-3 border border-white/10">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[#8BE28B]">science</span>
+                          <span>Additive &amp; Preservative Scan</span>
+                        </h3>
+                        <span className="text-[10px] font-mono text-[#FFB86B] font-bold">
+                          3 CHEMICAL ADDITIVES DETECTED
+                        </span>
+                      </div>
+
+                      <div className="divide-y divide-white/5 space-y-2 text-xs">
+                        <div className="pt-2 flex items-center justify-between">
+                          <div>
+                            <div className="font-bold text-white">Sodium Benzoate (INS 211)</div>
+                            <div className="text-[11px] text-[#A9B4AA]">Preservative • High acidity stability</div>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-md bg-[#332210] text-[#FFB86B] text-[10px] font-mono font-bold">
+                            Watchlist ⚠
+                          </span>
+                        </div>
+
+                        <div className="pt-2 flex items-center justify-between">
+                          <div>
+                            <div className="font-bold text-white">Potassium Sorbate (INS 202)</div>
+                            <div className="text-[11px] text-[#A9B4AA]">Antimicrobial shelf-life extender</div>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-md bg-[#142618] text-[#8BE28B] text-[10px] font-mono font-bold">
+                            Approved ✓
+                          </span>
+                        </div>
+
+                        <div className="pt-2 flex items-center justify-between">
+                          <div>
+                            <div className="font-bold text-white">Natural Identical Flavor (Spearmint)</div>
+                            <div className="text-[11px] text-[#A9B4AA]">Synthetic botanical clone essence</div>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-md bg-white/5 text-[#A9B4AA] text-[10px] font-mono font-bold">
+                            Neutral
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-[#0D1811] flex items-center gap-3 border border-white/10">
+                      <span className="material-symbols-outlined text-[#8BE28B] text-[22px]">verified_user</span>
+                      <div className="flex-1">
+                        <h4 className="text-xs font-bold text-white">EU Regulatory Restriction Check</h4>
+                        <p className="text-[11px] text-[#A9B4AA]">
+                          All components conform within legal maximum thresholds under EU 1333/2008 Annex II.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Footer summary link */}
+                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[#0D1811] border border-white/10 text-xs">
+                  <span className="flex items-center gap-2 text-[#A9B4AA]">
+                    <span className="w-2 h-2 rounded-full bg-[#8BE28B] animate-pulse" />
+                    <span>Verified via NutriVerify Deterministic Engine &amp; OCR Pipeline</span>
+                  </span>
+                  <Link to="/camera-scan" className="text-[#C8FF4D] hover:underline font-bold flex items-center gap-1">
+                    <span>Scan Your Own Product</span>
+                    <span className="material-symbols-outlined text-[14px]">launch</span>
+                  </Link>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ───────── THREE ANALYSIS METHODS ───────── */}
-        <section className="py-32">
-          <div className="max-w-5xl mx-auto px-6">
-            <div className="text-center mb-16">
-              <span className="text-[11px] font-[family-name:var(--font-mono)] text-nv-primary uppercase tracking-[0.2em] block mb-3">Input Methods</span>
-              <h2 className="font-[family-name:var(--font-display)] text-[clamp(28px,3.5vw,40px)] tracking-[-0.02em] font-semibold text-nv-text">Three ways to analyze</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {[
-                { icon: 'edit_note', title: 'Manual Entry', desc: 'Enter nutrition facts and ingredients by hand for precise analysis.', color: 'text-nv-primary' },
-                { icon: 'cloud_upload', title: 'Upload Image', desc: 'Upload a photo of any food label for automated extraction.', color: 'text-nv-tertiary' },
-                { icon: 'photo_camera', title: 'Live Camera', desc: 'Point your camera at a label for real-time scanning.', color: 'text-nv-secondary' },
-              ].map((m) => (
-                <Link key={m.title} to="/analyze" className="bg-nv-surface-container rounded-xl p-6 border border-nv-outline-variant/15 hover:border-nv-outline-variant/30 transition-all group">
-                  <span className={`material-symbols-outlined text-[28px] ${m.color} block mb-4`}>{m.icon}</span>
-                  <h3 className="font-[family-name:var(--font-display)] text-[17px] font-semibold text-nv-text mb-1.5">{m.title}</h3>
-                  <p className="text-[13px] text-nv-text-muted leading-relaxed">{m.desc}</p>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ───────── WHY IT MATTERS ───────── */}
-        <section className="py-32">
-          <div className="max-w-5xl mx-auto px-6">
-            <div className="text-center mb-16">
-              <span className="text-[11px] font-[family-name:var(--font-mono)] text-nv-primary uppercase tracking-[0.2em] block mb-3">Impact</span>
-              <h2 className="font-[family-name:var(--font-display)] text-[clamp(28px,3.5vw,40px)] tracking-[-0.02em] font-semibold text-nv-text">Why It Matters</h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[
-                { icon: 'visibility', title: 'See Beyond Labels', desc: 'Understand what ingredients actually do inside your body.' },
-                { icon: 'gpp_bad', title: 'Detect Deception', desc: 'Identify unsupported claims hidden in marketing language.' },
-                { icon: 'science', title: 'Ingredient Clarity', desc: 'Know which ingredients to trust and which to question.' },
-                { icon: 'compare_arrows', title: 'Smart Comparison', desc: 'Compare products with objective, evidence-based analysis.' },
-              ].map((item) => (
-                <div key={item.title} className="text-center">
-                  <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-nv-surface-container-high border border-nv-outline-variant/20 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[22px] text-nv-primary">{item.icon}</span>
-                  </div>
-                  <h3 className="font-[family-name:var(--font-display)] text-[16px] font-semibold text-nv-text mb-1.5">{item.title}</h3>
-                  <p className="text-[13px] text-nv-text-muted leading-relaxed">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ───────── TECHNOLOGY ───────── */}
-        <section className="py-24 bg-nv-surface-container-lowest border-y border-nv-outline-variant/15">
-          <div className="max-w-5xl mx-auto px-6">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+        {/* SECTION 7: SEVEN PILLARS OF FOOD INTELLIGENCE */}
+        <section className="relative w-full py-12 bg-[#080E09]/80 border-t border-white/5">
+          <div className="max-w-[1360px] mx-auto px-6 w-full flex flex-col gap-6">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
               <div>
-                <span className="text-[11px] font-[family-name:var(--font-mono)] text-nv-primary uppercase tracking-[0.2em] block mb-2">Technology</span>
-                <h3 className="font-[family-name:var(--font-display)] text-[22px] font-semibold text-nv-text">Engineered for Precision</h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-2 h-2 rounded-full bg-[#C8FF4D]" />
+                  <span className="text-[10px] font-mono uppercase text-[#C8FF4D] font-bold tracking-wider">
+                    Full Platform Capabilities
+                  </span>
+                </div>
+                <h2 className="text-2xl lg:text-3xl text-white font-black">
+                  Seven Pillars of Food Intelligence
+                </h2>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
-                {['Java', 'Spring Boot', 'React', 'REST APIs', 'JUnit 5'].map(tech => (
-                  <span key={tech} className="text-[12px] font-[family-name:var(--font-mono)] text-nv-text-muted bg-nv-surface-container px-3 py-1.5 rounded-lg border border-nv-outline-variant/15">{tech}</span>
-                ))}
+              <p className="text-xs text-[#A9B4AA] max-w-md">
+                Every analysis connects directly to deep specialized intelligence pages with zero dead ends.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {/* 1. Nutrition Intelligence */}
+              <Link
+                to="/nutrition"
+                className="group p-5 rounded-3xl bg-[#09120B]/90 border border-white/10 hover:border-[#8BE28B]/50 transition-all hover:-translate-y-1 shadow-lg flex flex-col justify-between"
+              >
+                <div>
+                  <div className="w-11 h-11 rounded-2xl bg-[#142618] text-[#8BE28B] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-[22px]">pie_chart</span>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1">Nutrition Intelligence</h3>
+                  <p className="text-[11px] text-[#A9B4AA] leading-relaxed">
+                    Granular macro &amp; micro breakdowns, glycemic index estimates, and portion scaling calibrated against Daily Value standards.
+                  </p>
+                </div>
+                <div className="mt-4 pt-2 border-t border-white/5 flex items-center gap-1.5 text-[#8BE28B] text-xs font-bold">
+                  <span>Explore Macros</span>
+                  <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                </div>
+              </Link>
+
+              {/* 2. Ingredient Intelligence */}
+              <Link
+                to="/ingredients"
+                className="group p-5 rounded-3xl bg-[#09120B]/90 border border-white/10 hover:border-[#8BE28B]/50 transition-all hover:-translate-y-1 shadow-lg flex flex-col justify-between"
+              >
+                <div>
+                  <div className="w-11 h-11 rounded-2xl bg-[#142618] text-[#8BE28B] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-[22px]">biotech</span>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1">Ingredient Intelligence</h3>
+                  <p className="text-[11px] text-[#A9B4AA] leading-relaxed">
+                    Cross-indexed against 45,000+ compounds with international E-numbers, chemical additive flags, and processing levels.
+                  </p>
+                </div>
+                <div className="mt-4 pt-2 border-t border-white/5 flex items-center gap-1.5 text-[#8BE28B] text-xs font-bold">
+                  <span>Audit Ingredients</span>
+                  <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                </div>
+              </Link>
+
+              {/* 3. Allergen Detection */}
+              <Link
+                to="/allergens"
+                className="group p-5 rounded-3xl bg-[#09120B]/90 border border-white/10 hover:border-[#FFB86B]/50 transition-all hover:-translate-y-1 shadow-lg flex flex-col justify-between"
+              >
+                <div>
+                  <div className="w-11 h-11 rounded-2xl bg-[#332210] text-[#FFB86B] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-[22px]">warning</span>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1">Allergen Safety Matrix</h3>
+                  <p className="text-[11px] text-[#A9B4AA] leading-relaxed">
+                    Automated screen against US Big 9, EU 14 mandatory declarations, cross-contact facility warnings, and custom profile matching.
+                  </p>
+                </div>
+                <div className="mt-4 pt-2 border-t border-white/5 flex items-center gap-1.5 text-[#FFB86B] text-xs font-bold">
+                  <span>Check Allergens</span>
+                  <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                </div>
+              </Link>
+
+              {/* 4. Claim Verification */}
+              <Link
+                to="/claims"
+                className="group p-5 rounded-3xl bg-[#09120B]/90 border border-white/10 hover:border-[#8BE28B]/50 transition-all hover:-translate-y-1 shadow-lg flex flex-col justify-between"
+              >
+                <div>
+                  <div className="w-11 h-11 rounded-2xl bg-[#142618] text-[#8BE28B] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-[22px]">gavel</span>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1">Claim Verification</h3>
+                  <p className="text-[11px] text-[#A9B4AA] leading-relaxed">
+                    Statutory audit of front-of-pack claims against US FDA 21 CFR, EU 1924/2006, and FSSAI 2020 labelling regulations.
+                  </p>
+                </div>
+                <div className="mt-4 pt-2 border-t border-white/5 flex items-center gap-1.5 text-[#8BE28B] text-xs font-bold">
+                  <span>Verify Claims</span>
+                  <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                </div>
+              </Link>
+
+              {/* 5. Product Comparison */}
+              <Link
+                to="/compare"
+                className="group p-5 rounded-3xl bg-[#09120B]/90 border border-white/10 hover:border-[#C8FF4D]/50 transition-all hover:-translate-y-1 shadow-lg flex flex-col justify-between"
+              >
+                <div>
+                  <div className="w-11 h-11 rounded-2xl bg-[#142618] text-[#C8FF4D] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-[22px]">compare_arrows</span>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1">Product Comparison</h3>
+                  <p className="text-[11px] text-[#A9B4AA] leading-relaxed">
+                    Side-by-side head-to-head comparison engine with nutritional differentials, allergen contrasts, and score metrics.
+                  </p>
+                </div>
+                <div className="mt-4 pt-2 border-t border-white/5 flex items-center gap-1.5 text-[#C8FF4D] text-xs font-bold">
+                  <span>Compare Products</span>
+                  <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                </div>
+              </Link>
+
+              {/* 6. Audit Reports */}
+              <Link
+                to="/reports"
+                className="group p-5 rounded-3xl bg-[#09120B]/90 border border-white/10 hover:border-[#8BE28B]/50 transition-all hover:-translate-y-1 shadow-lg flex flex-col justify-between"
+              >
+                <div>
+                  <div className="w-11 h-11 rounded-2xl bg-[#142618] text-[#8BE28B] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-[22px]">description</span>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1">Audit Reports</h3>
+                  <p className="text-[11px] text-[#A9B4AA] leading-relaxed">
+                    Comprehensive multi-format export system generating clean Print/PDF reports, JSON raw data, and RFC-4180 CSV tables.
+                  </p>
+                </div>
+                <div className="mt-4 pt-2 border-t border-white/5 flex items-center gap-1.5 text-[#8BE28B] text-xs font-bold">
+                  <span>Export Reports</span>
+                  <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                </div>
+              </Link>
+
+              {/* 7. NutriVerify AI Assistant */}
+              <Link
+                to="/chat"
+                className="group p-5 rounded-3xl bg-[#09120B]/90 border border-[#8BE28B]/30 hover:border-[#C8FF4D] transition-all hover:-translate-y-1 shadow-lg flex flex-col justify-between md:col-span-2 xl:col-span-2"
+              >
+                <div>
+                  <div className="w-11 h-11 rounded-2xl bg-[#142618] text-[#C8FF4D] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-[22px]">smart_toy</span>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1">NutriVerify AI Assistant</h3>
+                  <p className="text-[11px] text-[#A9B4AA] leading-relaxed">
+                    Context-aware conversational food intelligence grounded in active product specifications, answering inquiries on sugar thresholds, allergen safety, and botanical ingredient profiles.
+                  </p>
+                </div>
+                <div className="mt-4 pt-2 border-t border-white/5 flex items-center gap-1.5 text-[#C8FF4D] text-xs font-bold">
+                  <span>Chat with NutriVerify AI</span>
+                  <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                </div>
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* SECTION 8: REGULATORY TRUST & GLOBAL BENCHMARKS */}
+        <section className="relative w-full py-12">
+          <div className="max-w-[1360px] mx-auto px-6 w-full flex flex-col gap-6">
+            <div className="text-center max-w-xl mx-auto flex flex-col gap-1">
+              <span className="text-[10px] font-mono uppercase text-[#C8FF4D] font-bold tracking-wider">
+                Compliance Benchmarks
+              </span>
+              <h2 className="text-2xl lg:text-3xl text-white font-black">
+                Benchmarked Against Global Authorities
+              </h2>
+              <p className="text-xs text-[#A9B4AA]">
+                NutriVerify harmonizes nutrition guidelines across 3 primary global jurisdictions to ensure compliance across borders.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-5 rounded-3xl bg-[#09120B]/90 border border-[#8BE28B]/30 shadow-xl flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-extrabold text-white">FSSAI India</span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#1A3320] text-[#8BE28B] font-mono text-[10px] font-bold">
+                      ACTIVE FEED
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#A9B4AA] leading-relaxed">
+                    Automated validation against the Food Safety and Standards (Labelling and Display) Regulations 2020, tracking non-retail labeling standards and color codes.
+                  </p>
+                </div>
+                <div className="mt-4 pt-2 border-t border-white/5 text-[10px] font-mono text-[#A9B4AA]">
+                  Regulatory Sync: <strong className="text-[#8BE28B]">Version 2025.1</strong>
+                </div>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-[#09120B]/90 border border-[#8BE28B]/30 shadow-xl flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-extrabold text-white">U.S. FDA 21 CFR</span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#1A3320] text-[#8BE28B] font-mono text-[10px] font-bold">
+                      ACTIVE FEED
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#A9B4AA] leading-relaxed">
+                    Strict compliance validation for dual-column nutrition facts labeling, FALCPA allergen declarations, and modern “Healthy” implied nutrient claim rules.
+                  </p>
+                </div>
+                <div className="mt-4 pt-2 border-t border-white/5 text-[10px] font-mono text-[#A9B4AA]">
+                  Regulatory Sync: <strong className="text-[#8BE28B]">Title 21 Live DB</strong>
+                </div>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-[#09120B]/90 border border-[#8BE28B]/30 shadow-xl flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-extrabold text-white">EFSA European Union</span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#1A3320] text-[#8BE28B] font-mono text-[10px] font-bold">
+                      ACTIVE FEED
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#A9B4AA] leading-relaxed">
+                    EU Regulation (EU) No 1169/2011 on provision of food info to consumers. Verification of 14 mandatory allergen bolding and botanical health claims register.
+                  </p>
+                </div>
+                <div className="mt-4 pt-2 border-t border-white/5 text-[10px] font-mono text-[#A9B4AA]">
+                  Regulatory Sync: <strong className="text-[#8BE28B]">Register 1924/2006</strong>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ───────── TRUST / ACADEMIC ───────── */}
-        <section className="py-24">
-          <div className="max-w-3xl mx-auto px-6 text-center">
-            <div className="h-8 w-px bg-nv-outline-variant/30 mx-auto mb-6"></div>
-            <p className="text-[14px] text-nv-text-muted leading-relaxed">
-              Developed at <strong className="text-nv-text">Chennai Institute of Technology</strong> — Department of Computer Science & Health Informatics. Designed to bring algorithmic integrity to consumer food verification.
-            </p>
-            <div className="flex items-center justify-center gap-4 mt-4 text-[10px] font-[family-name:var(--font-mono)] text-nv-text-dim">
-              <span>PROJECT CIT-NUTRIVERIFY</span>
-              <span className="w-1 h-1 rounded-full bg-nv-outline-variant/40"></span>
-              <span>2025</span>
-            </div>
-          </div>
-        </section>
+        {/* SECTION 9: FINAL CALL TO ACTION */}
+        <section className="relative w-full py-12">
+          <div className="max-w-[1360px] mx-auto px-6 w-full">
+            <div className="relative rounded-3xl bg-[#09120B]/95 p-8 lg:p-12 overflow-hidden shadow-2xl flex flex-col items-center text-center gap-6 border-2 border-[#8BE28B]/40 backdrop-blur-2xl">
+              <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[500px] h-[250px] bg-[#C8FF4D]/15 rounded-full blur-[100px] pointer-events-none" />
 
-        {/* ───────── CTA ───────── */}
-        <section className="py-32 bg-nv-surface-container-lowest relative overflow-hidden">
-          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.04) 0%, transparent 70%)' }} />
-          <div className="relative max-w-3xl mx-auto px-6 text-center">
-            <h2 className="font-[family-name:var(--font-display)] text-[clamp(28px,3.5vw,40px)] tracking-[-0.02em] font-semibold text-nv-text mb-4">
-              See beyond the label.
-            </h2>
-            <p className="text-[16px] text-nv-text-muted max-w-lg mx-auto mb-8">
-              Start verifying food labels with intelligent analysis. Make every bite informed.
-            </p>
-            <Link to="/register" className="inline-flex items-center gap-2.5 px-8 py-4 bg-nv-primary-container hover:bg-nv-primary text-nv-on-primary-container font-[family-name:var(--font-display)] text-[16px] font-semibold rounded-xl shadow-[0_0_30px_rgba(212,175,55,0.2)] hover:shadow-[0_0_50px_rgba(242,202,80,0.35)] transition-all">
-              <span className="material-symbols-outlined text-[20px]">biotech</span>
-              Analyze Your First Label
-            </Link>
-          </div>
-        </section>
-
-        {/* ───────── FOOTER ───────── */}
-        <footer className="py-10 border-t border-nv-outline-variant/20">
-          <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-6 h-6 rounded bg-nv-primary-container/20 flex items-center justify-center">
-                <span className="material-symbols-outlined text-[14px] text-nv-primary">verified</span>
+              <div className="relative z-10 flex flex-col items-center gap-2 max-w-2xl">
+                <span className="text-[10px] font-mono uppercase text-[#C8FF4D] font-extrabold tracking-widest">
+                  START IN SECONDS • ZERO INSTALLATION REQUIRED
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-black text-white">
+                  Take Control of What You Put on Your Plate.
+                </h2>
+                <p className="text-xs sm:text-sm text-[#A9B4AA] leading-relaxed">
+                  Join thousands of health-conscious consumers, athletes, and nutritionists using NutriVerify's verified AI food scanner today.
+                </p>
               </div>
-              <span className="text-[12px] font-[family-name:var(--font-mono)] text-nv-text-dim">NutriVerify</span>
+
+              <div className="relative z-10 flex flex-wrap items-center justify-center gap-3">
+                <Link
+                  to="/camera-scan"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#C8FF4D] text-black font-extrabold text-xs shadow-[0_0_24px_rgba(200,255,77,0.4)] transition-all duration-200 hover:brightness-110 active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-[18px]">photo_camera</span>
+                  <span>Launch Camera Scanner</span>
+                </Link>
+
+                <Link
+                  to="/upload"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#102014] text-white font-bold text-xs shadow-md transition-all duration-200 hover:bg-[#162a1b] active:scale-95 border border-white/10"
+                >
+                  <span className="material-symbols-outlined text-[18px] text-[#8BE28B]">upload_file</span>
+                  <span>Upload Label Image</span>
+                </Link>
+              </div>
+
+              <div className="relative z-10 flex flex-wrap items-center justify-center gap-4 text-[#A9B4AA] text-[11px] font-mono">
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px] text-[#8BE28B]">check_circle</span>
+                  <span>No Credit Card Needed</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px] text-[#8BE28B]">check_circle</span>
+                  <span>Immediate Processing</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px] text-[#8BE28B]">check_circle</span>
+                  <span>GDPR &amp; HIPAA Compliant</span>
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-6 text-[12px] text-nv-text-dim">
-              <a href="/privacy" className="hover:text-nv-primary transition-colors">Privacy</a>
-              <a href="/help" className="hover:text-nv-primary transition-colors">Help</a>
-              <a href="/accessibility" className="hover:text-nv-primary transition-colors">Accessibility</a>
-            </div>
-            <span className="text-[11px] font-[family-name:var(--font-mono)] text-nv-text-dim">© 2025 NutriVerify</span>
           </div>
-        </footer>
+        </section>
       </main>
+
+      {/* ── Footer ── */}
+      <footer className="relative z-10 w-full bg-[#060A07] border-t border-white/10 mt-auto">
+        <div className="w-full max-w-[1360px] mx-auto px-6 py-10 flex flex-col gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="flex flex-col gap-2 md:col-span-2">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-[#C8FF4D] text-black flex items-center justify-center font-bold">
+                  <span className="material-symbols-outlined text-[16px]">verified</span>
+                </div>
+                <span className="text-base text-white font-bold">
+                  Nutri<span className="text-[#C8FF4D]">Verify</span>
+                </span>
+              </div>
+              <p className="text-xs text-[#A9B4AA] max-w-lg leading-relaxed">
+                Scientific-grade food label verification, botanical additive cross-validation, and bio-nutritional spectral intelligence powered by edge OCR and deterministic engines.
+              </p>
+              <div className="flex items-center gap-2 text-[#A9B4AA] text-[10px] font-mono pt-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#8BE28B] animate-pulse" />
+                <span>API Gateway: Operational (latency: 14ms)</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 text-xs">
+              <span className="text-[10px] font-mono text-[#8BE28B] uppercase tracking-wider font-bold">
+                Verification Hub
+              </span>
+              <Link to="/camera-scan" className="text-[#A9B4AA] hover:text-white transition-colors">
+                Camera OCR Scan
+              </Link>
+              <Link to="/upload" className="text-[#A9B4AA] hover:text-white transition-colors">
+                Batch Label Upload
+              </Link>
+              <Link to="/manual" className="text-[#A9B4AA] hover:text-white transition-colors">
+                Manual Spectral Input
+              </Link>
+              <Link to="/chat" className="text-[#A9B4AA] hover:text-[#C8FF4D] transition-colors">
+                NutriVerify AI Assistant
+              </Link>
+            </div>
+
+            <div className="flex flex-col gap-2 text-xs">
+              <span className="text-[10px] font-mono text-[#8BE28B] uppercase tracking-wider font-bold">
+                Ecosystem &amp; Project
+              </span>
+              <Link to="/compare" className="text-[#A9B4AA] hover:text-white transition-colors">
+                Nutritional Comparison
+              </Link>
+              <Link to="/reports" className="text-[#A9B4AA] hover:text-white transition-colors">
+                Safety Audit Report
+              </Link>
+              <Link to="/about" className="text-[#A9B4AA] hover:text-white transition-colors">
+                Methodology &amp; Standards
+              </Link>
+              <div className="pt-2 flex flex-wrap gap-1">
+                <span className="px-2 py-0.5 rounded-md bg-white/5 text-[#A9B4AA] text-[9px] font-mono border border-white/5">
+                  #FoodSafetyAI
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-white/5 text-[#A9B4AA] text-[9px] font-mono border border-white/5">
+                  #BioTech2025
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-2 text-[11px] text-[#6F7A70]">
+            <p className="text-center md:text-left">
+              Disclaimer: NutriVerify provides AI-assisted food label verification; consult clinical professionals for medical diets and acute allergen treatment.
+            </p>
+            <span className="shrink-0 font-mono">
+              © 2025 NutriVerify Platform. All rights reserved.
+            </span>
+          </div>
+        </div>
+      </footer>
+
+      {/* ── Interactive Demo Verification Modal ── */}
+      {demoLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-fade-in-up">
+          <div className="w-full max-w-lg bg-[#0D1610] border border-primary-container/30 rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center relative overflow-hidden">
+            {/* Top scanning pulse line */}
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-primary-container to-transparent animate-pulse" />
+
+            <div className="w-16 h-16 rounded-2xl bg-primary-container/20 border border-primary-container/40 text-primary-container flex items-center justify-center mb-5 animate-spin-slow">
+              <span className="material-symbols-outlined text-[36px]">biotech</span>
+            </div>
+
+            <span className="font-label-code text-xs text-primary-container font-bold uppercase tracking-widest mb-1">
+              Live Verification Pipeline Active
+            </span>
+            <h3 className="text-xl font-extrabold text-white mb-2">
+              Analyzing {demoProductName || 'Packaging Specimen'}
+            </h3>
+            <p className="text-xs text-[#A9B4AA] mb-6">
+              Deconstructing label text, verifying statutory claims &amp; screening allergens...
+            </p>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-[#142217] rounded-full h-2.5 overflow-hidden border border-white/10 mb-6">
+              <div
+                className="bg-primary-container h-full transition-all duration-300 rounded-full shadow-[0_0_12px_rgba(200,255,77,0.8)]"
+                style={{ width: `${Math.round(((demoStageIdx + 1) / DEMO_STAGES.length) * 100)}%` }}
+              />
+            </div>
+
+            {/* Stage Step Indicator */}
+            <div className="w-full space-y-2 text-left bg-[#142217] p-4 rounded-2xl border border-white/5">
+              {DEMO_STAGES.map((stage, idx) => {
+                const isDone = idx < demoStageIdx;
+                const isCurrent = idx === demoStageIdx;
+                return (
+                  <div
+                    key={idx}
+                    className={`flex items-center justify-between text-xs font-label-code transition-all ${
+                      isCurrent ? 'text-primary-container font-bold translate-x-1' :
+                      isDone ? 'text-white/80 opacity-70' :
+                      'text-[#A9B4AA]/40'
+                    }`}
+                  >
+                    <span>{stage}</span>
+                    <span className="material-symbols-outlined text-[16px]">
+                      {isDone ? 'check_circle' : isCurrent ? 'hourglass_top' : 'circle'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
